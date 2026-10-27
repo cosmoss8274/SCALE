@@ -3,6 +3,28 @@
 What in this directory has been executed, what has not, and what the next person will hit.
 Written so that nothing here has to be taken on trust.
 
+## Colab installation check — 28 October 2026
+
+The setup and GPU cells were executed in a real Colab T4 runtime. The original setup
+used Python 3.13.16, outside Boltz-2's supported Python range, and skipped dependency
+installation on subsequent runs merely because the checkout directory existed.
+
+The revised setup keeps the notebook on Colab's Python 3.13.16 and PyTorch
+2.11.0+cu130. It installs Boltz 2.2.1 into a separate Python 3.12.3 environment,
+checks dependencies on every run, and records both environments in
+`scale_run/environment.json`.
+
+The installation, required notebook imports, CLI startup, kernel GPU check and a tiny
+CUDA tensor operation in the isolated backend passed. The backend reported PyTorch
+2.14.1, NumPy 1.26.4, CUDA 13.0 and Tesla T4. Initial setup took 143.8 seconds;
+a repeat setup with the added CUDA check took 11.5 seconds on this runtime.
+
+`python tests/test_colab_setup.py` passed three offline checks: recovery after a failed
+package install, rejection of an incompatible backend Python, and failure to report
+success when backend CUDA is unavailable. Package-manager calls are mocked in these tests.
+
+This installation-only check was followed by the complete real-prediction run recorded below.
+
 ## Executed and passing
 
 | Check | Command | Result |
@@ -17,7 +39,7 @@ Written so that nothing here has to be taken on trust.
 
 `test_boltz_parsing.py` builds the output tree documented in the Boltz repository and checks
 the mapping onto the loop's metric names — including that `min_pae_interaction` comes from
-`pae_*.npz` and is returned as NaN, not substituted, when `--write_pae` was not passed.
+`pae_*.npz` and is returned as NaN, not substituted, when `--write_full_pae` was not passed.
 
 `test_loop_smoke.py` drives the loop with a stub oracle whose metrics are a deterministic
 function of the sequence. **Those numbers are synthetic and are not results**; the test exists
@@ -55,22 +77,84 @@ median of 9.21, so imputing 7.0 places those designs *below* the typical off-tar
 it makes the paralogue look more engaged than it may be. The selectivity claim is therefore
 conservative with respect to this imputation, not inflated.
 
-## Not executed
+## Live notebook verification — 28 October 2026
 
-**Boltz-2 has never been run from this code.** The adapter is validated against the documented
-output schema, not against a live prediction. Running it is the first thing to do in Colab,
-where `pip install boltz` is routine.
+The earlier local-mutation demo completed all 14 code cells in a fresh Colab Tesla T4
+runtime: 10 initial predictions and five rounds of five new predictions (35 total).
+Boltz 2.2.1 used three recycling steps, one diffusion sample, and the public MSA server.
+The initial best interface pTM was 0.9046 and the run best was 0.9198. The latter differed
+from the nearest starting-pool sequence at only 2 of 80 positions. This run verifies
+execution and parsing, but also motivates explicit sequence exploration constraints.
 
-**The notebook has not been executed in a Jupyter kernel.** The sandbox this was written in
-forbids socket binding, so `nbconvert --execute` cannot start a kernel; cells were executed as
-a script instead, in one namespace, which exercises the same code but not the rendering. The
-py3Dmol views in particular have never been rendered. Run the notebook top to bottom in Colab
-before trusting its output.
+The downloaded notebook's executed source matched its input snapshot, with no error
+outputs. The result archive passed 19 integrity/content checks, including all 35 metric
+records and CIF structures, complete round counts, metric/CSV consistency, exact receptor
+and binder sequence correspondence in every CIF, and finite atom coordinates. All 14 code
+cells were executed. Source snapshots and generated results are retained privately.
 
-**`--use_msa_server` is an open question.** `binderopt/oracles/boltz.py` does not pass it, so
-the receptor runs in single-sequence mode unless you supply `msa_path`. Boltz may support
-fetching an MSA from the ColabFold server; check `boltz predict --help` and wire it up if the
-flag exists. Do not assume it does.
+## Distance-constrained comparison — 28 October 2026
+
+Both frozen configurations completed all 14 code cells on real Colab Tesla T4 runtimes.
+Each evaluated the same ten initial designs and 25 new designs, for 35 evaluations per
+setting. The second run imported the first run's ten initial measured labels and CIFs
+exactly; no new-design labels from the first setting entered its surrogate. There were
+60 actual prediction calls across these two runs. Both used Boltz 2.2.1, three recycling
+steps, one diffusion sample, and the public MSA server.
+
+| Quantity | Wider exploration (default) | Moderate novelty + local refinement |
+|---|---:|---:|
+| Pool / batch / previous-new distance floors (80 aa) | 8 / 8 / 4 | 5 / 5 / 3 |
+| Novel-refinement flag | False | True |
+| Best new interface pTM | 0.870861 | 0.872471 |
+| Best new distance to nearest of all 100 pool sequences | 8 (90% identity) | 9 (88.75% identity) |
+| Raw top-five score median | 0.837592 | 0.862364 |
+| All 25 new scores: median / mean | 0.753901 / 0.629556 | 0.741014 / 0.708718 |
+| New designs with interface pTM ≥0.8 | 6/25 | 5/25 |
+| New designs with interface pTM <0.5 | 6/25 | 2/25 |
+| Final diverse portfolio: median / minimum | 0.837592 / 0.819846 | 0.810894 / 0.723616 |
+| Final diverse portfolio: minimum pairwise distance | 12 | 5 |
+| Final diverse portfolio: founding seeds | 4 | 4 |
+
+The final portfolio contains five measured new designs under the same batch distance
+and founder limits, with at most two from one founder. The raw top five in the refinement
+run represented only two founders; they cannot be presented as a qualifying diverse
+portfolio. Founder identifiers describe starting sequences, not structural families.
+
+Wider exploration is the default because the requested final diverse set retained higher
+minimum and median scores and wider separation. The refinement setting had a higher
+mean and raw top-five median. These are two configuration bundles, each run once, rather
+than a distance-only ablation or evidence of a globally optimal setting.
+
+Both runs used a disclosed initial batch that excluded three *previously known* seeds
+with interface pTM ≥0.85, kept seven previously measured lower-scoring seeds, and added
+three previously unmeasured seeds selected with random seed 0. One added seed scored
+0.886401 and was retained. Neither setting exceeded that shared initial best. The earlier
+local-mutation run had a different initial batch and is not a matched performance control.
+All low scores and round-to-round declines remain in the downloaded data and figures.
+
+The wider archive passed 44 independent checks; the refinement archive passed 51,
+including exact equality of the ten shared labels/CIFs and the backend settings.
+Checks covered all 35 metric records, actual CIF sequences and finite coordinates,
+complete round counts, saved batch plans, parent/founder lineage, distances to the full
+pool and prior new designs, batch separation and founder caps. Both executed notebooks
+passed eight checks, including all 14 executed code cells, exact source correspondence
+to their respective frozen inputs, no error outputs and five complete guided rounds.
+
+The release's combined sampler reproduced the wider run's five saved rounds of parents,
+all 600 proposals per round and selected batches when novel refinement was disabled.
+The final plotting change moves legends outside the data areas. Frozen run archives and
+input snapshots are retained privately; public notebooks are regenerated without outputs
+or embedded private run data.
+
+Offline tests exercise the actual notebook search cells through a simulated interruption,
+exact total prediction count, fixed-batch resumption, all three distance floors, actual
+parent provenance, founding-seed caps, and rejection of incompatible checkpoint settings.
+Synthetic test scores are used only for these code checks, not as prediction results.
+
+The Boltz adapter passes `--use_msa_server` when requested; live runs use it. Parsed
+interface PAE comes from the emitted full PAE arrays. The isolated backend version is
+recorded in `environment.json`; records may report the generic `boltz2-cli` version label
+because the notebook kernel and predictor use different environments.
 
 ## Known blockers
 
@@ -86,7 +170,8 @@ failed, none of them a code problem:
    wheel: `fairscale==0.4.13` (sdist only, and `pip download --no-binary` tries to build it)
    and `modelcif==1.2` (PyPI now serves wheels only for 1.6+).
 
-In Colab none of this applies — the network is fast and pip resolves sdists normally.
+Colab also needs a compatible Python version. The current setup isolates Boltz-2 in
+Python 3.12 instead of relying on the notebook kernel's Python version.
 
 **Metrics are oracle-specific.** The hit criteria in `data/` and the manuscript are calibrated
 on AlphaFold 3. A Boltz-2 interface pTM of 0.80 does not denote what 0.80 from AlphaFold 3

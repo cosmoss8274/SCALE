@@ -144,7 +144,7 @@ class MultiMetricGuidedSampler:
                 positions = random.sample(range(len(seq)), n_muts)
                 mutant = list(seq)
                 for pos in positions:
-                    mutant[pos] = random.choice(self.amino_acids)
+                    mutant[pos] = random.choice([aa for aa in self.amino_acids if aa != seq[pos]])
                 candidates.add("".join(mutant))
 
         candidates.update(
@@ -265,7 +265,7 @@ class MultiMetricGuidedSampler:
                                                  p=mutation_probs)
                 mutant = list(seq)
                 for pos in positions:
-                    mutant[pos] = random.choice(self.amino_acids)
+                    mutant[pos] = random.choice([aa for aa in self.amino_acids if aa != seq[pos]])
                 candidates.append("".join(mutant))
 
         return candidates
@@ -276,10 +276,10 @@ class MultiMetricGuidedSampler:
         n_per_seq = n_total // max(len(sequences), 1)
         for seq in sequences:
             for _ in range(n_per_seq):
-                n_muts = random.randint(2, 4)
+                n_muts = min(random.randint(self.min_mutations, max(self.min_mutations, self.max_mutations)), len(seq))
                 positions = random.sample(range(len(seq)), n_muts)
                 mutant = list(seq)
                 for pos in positions:
-                    mutant[pos] = random.choice(self.amino_acids)
+                    mutant[pos] = random.choice([aa for aa in self.amino_acids if aa != seq[pos]])
                 candidates.append("".join(mutant))
         return candidates

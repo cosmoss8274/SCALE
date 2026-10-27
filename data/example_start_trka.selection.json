@@ -1,0 +1,56 @@
+{
+  "selection_rule": "Keep the seven previously measured seeds with Boltz-2 iPTM <0.85, exclude three known seeds >=0.85, and add three previously unmeasured pool entries using random.Random(0). No post-prediction filtering.",
+  "prior_run": "SCALE_E2E_20261028",
+  "excluded_known_high": [
+    {
+      "design_id": "seed_003",
+      "previous_iptm": 0.9024457335472107
+    },
+    {
+      "design_id": "seed_001",
+      "previous_iptm": 0.896221935749054
+    },
+    {
+      "design_id": "seed_007",
+      "previous_iptm": 0.9046225547790527
+    }
+  ],
+  "included_known_below_085": [
+    {
+      "design_id": "seed_077",
+      "previous_iptm": 0.7201175093650818
+    },
+    {
+      "design_id": "seed_081",
+      "previous_iptm": 0.7077463865280151
+    },
+    {
+      "design_id": "seed_058",
+      "previous_iptm": 0.6412835121154785
+    },
+    {
+      "design_id": "seed_047",
+      "previous_iptm": 0.7802928686141968
+    },
+    {
+      "design_id": "seed_025",
+      "previous_iptm": 0.6652681827545166
+    },
+    {
+      "design_id": "seed_029",
+      "previous_iptm": 0.7853232026100159
+    },
+    {
+      "design_id": "seed_017",
+      "previous_iptm": 0.8239603638648987
+    }
+  ],
+  "included_unmeasured": [
+    "seed_056",
+    "seed_061",
+    "seed_008"
+  ],
+  "new_budget": 35,
+  "oracle_settings_unchanged": true,
+  "comparison_limit": "Starting batch differs from the earlier run; score differences do not isolate the effect of the diversity policy."
+}

@@ -25,7 +25,7 @@ the next designs.
 | `binderopt/objectives.py` | what "better" means — a callable the loop maximises |
 | `binderopt/pools.py` | read a starting pool from any generator (CSV or FASTA) |
 | `tests/` | plumbing tests that need no GPU |
-| `notebooks/SCALE_demo.ipynb` | worked example on the TrkA/TrkB/TrkC selectivity task |
+| `notebooks/SCALE_demo.ipynb` | local example with a configurable target, starting pool and objective |
 | `notebooks/build_notebook*.py` | generate the notebook from source (keeps it diffable) |
 | `configs/` | `defaults.yaml` + one YAML per target, loaded by `binderopt/targets.py` |
 | `design.py` | CLI driver for a production run |
@@ -35,8 +35,10 @@ the next designs.
 
 ## Quick start
 
-In Colab, with nothing to install, click the badge above. It clones this repository, installs
-Boltz-2 and runs the whole loop on a T4.
+In Colab, open the badge above and run the setup cell. It keeps Colab's CUDA-matched
+PyTorch for the notebook and installs Boltz 2.2.1 in a separate Python 3.12 environment.
+Setup checks the dependencies again on every run, including after an interrupted install.
+The installed versions are saved in `scale_run/environment.json`.
 
 Locally:
 
@@ -59,10 +61,9 @@ Regenerate both with `python notebooks/build_notebook.py`; check one runs in a r
 
 See `VERIFICATION.md` for exactly what has been executed and what has not.
 
-The notebook runs the loop for real — every structure in it is predicted while it runs, on
-sequences that did not exist beforehand. It needs a GPU; on a Colab T4 the default settings
-(16 seed designs, then 3 rounds of 5) take about an hour. Four things are the user's to
-supply, one cell each:
+The notebook is designed to evaluate new proposals with its selected predictor. It needs
+a GPU. The default budget is 10 initial evaluations followed by 5 rounds of 5 (35 predictions); runtime
+depends on the hardware and input sizes. Four things are the user's to supply, one cell each:
 
 | | what | default |
 |---|---|---|
@@ -74,6 +75,70 @@ supply, one cell each:
 Note that AlphaFold 3 cannot be used from a notebook: its weights require a signed licence
 and are not redistributable. Use Boltz-2 there and AF3 on a cluster you control — the loop
 code is identical, only `get_oracle(...)` changes.
+
+## Sequence exploration in the demo
+
+The bundled 100-sequence example is highly redundant: 92 entries have another pool
+sequence only one residue away. More labels from this pool do not necessarily add broad
+sequence coverage. Supply a broader candidate pool to explore different starting families.
+
+The notebook exposes three minimum distances, expressed as fractions of binder length:
+10% from **every sequence in the complete starting pool**, 10% between designs in the
+same new batch, and 5% from previously measured new designs. For 80-aa binders these are
+8, 8 and 4 substitutions. This substitution search requires equal-length sequences;
+it does not truncate unequal sequences to compute a distance.
+
+The default proposes from the best measured representative of five founding seeds,
+using steps of 8–12 substitutions. The optional novel-refinement setting prioritises
+novel representatives, with initial-seed fallbacks and smaller local steps.
+All three global distance floors remain enforced. A
+five-design batch must contain at least three founders, with at most two descendants of
+any one founder. Proposal metadata records the actual generating parent and founder;
+founders are starting-sequence identifiers, not inferred structural families. Pairwise
+sequence distance is enforced independently of these identifiers. The surrogate ranks
+feasible proposals, and a constrained selection chooses the measured batch. If the
+constraints cannot be met, the run stops before predicting that batch, without relaxing
+them. These configurable exploration settings are not experimentally calibrated.
+
+The two evaluation configurations use `(MIN_POOL_DISTANCE, MIN_BATCH_DISTANCE,
+MIN_HISTORY_DISTANCE, USE_NOVEL_REFINEMENT)` values `(0.10, 0.10, 0.05, False)` for
+wide exploration and `(0.0625, 0.0625, 0.0375, True)` for moderate novelty with local
+refinement. The former retains score-ranked parents and steps of 8–12 substitutions;
+the latter prioritises novelty-feasible parents and permits local refinement. This
+compares two configuration bundles rather than isolating a single parameter.
+
+Both configurations completed 35 evaluations on the same ten initial labels and
+structures, each with 25 new designs. Wider exploration is the demo default: its final
+five-design diverse portfolio scored 0.8198–0.8709, with a minimum pairwise distance of
+12 positions and four founding seeds. The refinement setting reached a similar best
+new score (0.8725), a higher raw top-five median and fewer low-scoring designs, but its
+diverse portfolio scored 0.7236–0.8725. Each setting was run once. The default favours
+the requested quality of a diverse final set; it does not dominate every score summary.
+See [VERIFICATION.md](VERIFICATION.md) for the complete comparison.
+
+An optional `SEED_BATCH_PATH` CSV supplies an explicit initial batch from the pool.
+Score-based screening changes the starting condition and should be recorded in a sibling
+`<seed_batch>.selection.json` file; the notebook includes it in the exported configuration.
+Do not interpret runs with different starting batches as an isolated algorithm comparison.
+
+For the disclosed moderate-start demonstration, set `SEED_BATCH_PATH` to
+`data/example_start_trka.csv`. This fixed batch retains seven previously measured seeds
+with Boltz-2 interface pTM below 0.85, excludes three known seeds at or above 0.85, and
+adds three previously unmeasured entries selected with random seed 0. The accompanying
+selection manifest records the exclusion rule and the selected entries. Newly observed
+high scores are retained, not filtered after prediction. The default blank field still
+samples ten entries from the complete pool.
+
+`history.json` and `trajectory.csv` include parent and founder identifiers, substitutions
+from the parent, founder and nearest pool sequence, and nearest-pool identity. The plot
+shows measured scores (including separate cumulative best overall and best novel design),
+score versus novelty, batch pairwise distance, and contributions
+from each founding seed. Per-round medians can rise or fall; only best-so-far is
+cumulative. Per-round plans are saved before predictions, so interrupted rounds resume
+the same selected sequences. Changed search settings require a fresh output directory.
+
+These constraints are used by the two demo notebooks. The production `design.py` driver
+retains its existing selection policy.
 
 ## Oracles
 
@@ -91,7 +156,7 @@ oracle = get_oracle("replay", path="data/trk_multi_joint.json", target="TRKA")
 - **`af3`** — AlphaFold 3, the oracle used for every number in the manuscript.
 - **`boltz2`** — Boltz-2 via its command line. Its confidence JSON carries no summarised
   interface PAE, so `min_pae_interaction` is computed here from `pae_*.npz` (requires
-  `--write_pae`); without that file the metric is returned as NaN rather than silently
+  `--write_full_pae`); without that file the metric is returned as NaN rather than silently
   replaced.
 - **`replay`** — recorded evaluations, for reproducing a run without a GPU. Asked for a
   sequence it has not measured it raises, rather than inventing a value.
@@ -130,6 +195,7 @@ than hinged, because a threshold leaves most candidates with zero gradient.
 
 ```bash
 python tests/test_boltz_parsing.py   # Boltz-2 output -> metric mapping, no GPU needed
+python tests/test_colab_setup.py    # setup recovery and Python checks, no downloads
 python tests/test_loop_smoke.py      # evaluator -> surrogate -> sampler -> bookkeeping
 ```
 

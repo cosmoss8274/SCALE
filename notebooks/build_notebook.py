@@ -34,6 +34,113 @@ HERE = Path(__file__).resolve().parent
 REPO_URL = "https://github.com/cosmoss8274/SCALE"
 COLAB_NOTEBOOK = "notebooks/SCALE_demo_colab.ipynb"
 
+COLAB_SETUP = r'''
+#@title Install SCALE and Boltz-2 { display-mode: "form" }
+#@markdown Repository to clone. Change this only to use your own fork.
+REPO_URL = "__REPO_URL__"  #@param {type:"string"}
+
+import importlib
+from importlib import metadata
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
+
+started = time.perf_counter()
+ROOT = Path("/content/SCALE")
+RUN = Path("/content/scale_run")
+BOLTZ_ENV = Path("/content/.scale-boltz2-py312")
+BOLTZ_VERSION = "2.2.1"
+
+if not ROOT.exists():
+    print("Cloning SCALE ...", flush=True)
+    subprocess.run(["git", "clone", "-q", REPO_URL, str(ROOT)], check=True)
+elif not (ROOT / ".git").is_dir():
+    raise RuntimeError(f"{ROOT} exists but is not a Git checkout. Choose a different directory.")
+
+CODE = ROOT / "code" if (ROOT / "code").exists() else ROOT
+if str(CODE) not in sys.path:
+    sys.path.insert(0, str(CODE))
+DATA = CODE / "data"
+RUN.mkdir(parents=True, exist_ok=True)
+
+# The notebook keeps Colab's CUDA-matched torch. Boltz-2 has a separate Python 3.12
+# environment because its published packages do not support Python 3.13.
+# Always check dependencies: an existing checkout does not mean setup succeeded.
+print("Checking notebook dependencies ...", flush=True)
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "uv", "fair-esm",
+     "py3Dmol", "scikit-learn", "biopython", "PyYAML"],
+    check=True,
+)
+uv = [sys.executable, "-m", "uv"]
+boltz_python = BOLTZ_ENV / "bin" / "python"
+boltz_executable = BOLTZ_ENV / "bin" / "boltz"
+if not boltz_python.exists():
+    print("Creating the Boltz-2 Python 3.12 environment ...", flush=True)
+    subprocess.run(uv + ["venv", "--python", "3.12", str(BOLTZ_ENV)], check=True)
+
+environment_python = json.loads(subprocess.check_output(
+    [str(boltz_python), "-c",
+     "import json,sys; print(json.dumps(list(sys.version_info[:3])))"],
+    text=True,
+))
+if environment_python[:2] != [3, 12]:
+    raise RuntimeError(f"Expected Python 3.12 in {BOLTZ_ENV}; found {environment_python}.")
+
+print(f"Checking Boltz-{BOLTZ_VERSION} dependencies ...", flush=True)
+subprocess.run(
+    uv + ["pip", "install", "--python", str(boltz_python), f"boltz=={BOLTZ_VERSION}"],
+    check=True,
+)
+subprocess.run(uv + ["pip", "check", "--python", str(boltz_python)], check=True)
+subprocess.run([str(boltz_executable), "--help"], stdout=subprocess.DEVNULL, check=True)
+backend_gpu = json.loads(subprocess.check_output(
+    [str(boltz_python), "-c",
+     "import json,torch; "
+     "assert torch.cuda.is_available(), 'CUDA is unavailable in the Boltz environment'; "
+     "torch.zeros(1, device='cuda').cpu(); "
+     "print(json.dumps({'name': torch.cuda.get_device_name(0), 'cuda': torch.version.cuda}))"],
+    text=True,
+))
+
+# Make the isolated CLI available to the existing adapter; no predictor is run here.
+env_bin = str(BOLTZ_ENV / "bin")
+path_parts = os.environ.get("PATH", "").split(os.pathsep)
+os.environ["PATH"] = os.pathsep.join([env_bin] + [p for p in path_parts if p != env_bin])
+for module in ("numpy", "pandas", "scipy", "sklearn", "esm", "Bio", "yaml", "py3Dmol"):
+    importlib.import_module(module)
+
+backend_versions = json.loads(subprocess.check_output(
+    [str(boltz_python), "-c",
+     "import json; from importlib.metadata import version; "
+     "print(json.dumps({p: version(p) for p in ('boltz','torch','numpy')}))"],
+    text=True,
+))
+if backend_versions["boltz"] != BOLTZ_VERSION:
+    raise RuntimeError(f"Expected Boltz {BOLTZ_VERSION}; found {backend_versions['boltz']}.")
+
+environment = {
+    "kernel_python": sys.version.split()[0],
+    "kernel_torch": metadata.version("torch"),
+    "backend_python": ".".join(map(str, environment_python)),
+    "backend_packages": backend_versions,
+    "backend_gpu": backend_gpu,
+    "backend_executable": str(boltz_executable),
+    "code_commit": subprocess.check_output(
+        ["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip(),
+    "setup_seconds": round(time.perf_counter() - started, 1),
+}
+(RUN / "environment.json").write_text(json.dumps(environment, indent=2) + "\n")
+print("Setup checks passed. No prediction has been run.")
+print(json.dumps(environment, indent=2))
+print("Code:", CODE)
+print("Results:", RUN)
+'''
+
+
 md, code = nbf.v4.new_markdown_cell, nbf.v4.new_code_cell
 
 
@@ -104,44 +211,7 @@ def setup_cells(colab: bool):
     cells = [md("## 0 Setup")]
 
     if colab:
-        cells.append(form(r'''#@title 🛠️ Install SCALE and Boltz-2 (~5 min, mostly downloads) { display-mode: "form" }
-%%time
-#@markdown Repository to clone. Change it if you are running your own fork.
-REPO_URL = "''' + REPO_URL + r'''"  #@param {type:"string"}
-
-# Deliberately NOT installed, and why:
-#   AlphaFold 3  - the weights need a signed licence from DeepMind and are not
-#                  redistributable, so no notebook can fetch them. Boltz-2 is used here;
-#                  run AF3 on a cluster you control. Only get_oracle(...) changes.
-#   MSA tools    - jackhmmer/hhblits need sequence databases of several hundred GB.
-#                  Boltz can query a remote MSA server instead; see the target cell.
-#   torch        - Colab ships a build matched to its own driver. Reinstalling it breaks
-#                  CUDA, so boltz is installed without touching it.
-import os, subprocess, sys, time
-from pathlib import Path
-
-ROOT = Path("/content/SCALE")
-
-# Guarded so that re-running after a disconnect is cheap, and still repairs sys.path.
-if not ROOT.exists():
-    print("cloning SCALE ...", flush=True)
-    subprocess.run(["git", "clone", "-q", REPO_URL, str(ROOT)], check=True)
-
-    print("installing boltz and friends (this is the slow part) ...", flush=True)
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                    "boltz", "fair-esm", "py3Dmol", "scikit-learn", "biopython"],
-                   check=True)
-    print("done", flush=True)
-else:
-    print("already set up at", ROOT)
-
-CODE = ROOT / "code" if (ROOT / "code").exists() else ROOT
-if str(CODE) not in sys.path:
-    sys.path.insert(0, str(CODE))
-DATA = CODE / "data"
-RUN = Path("/content/scale_run"); RUN.mkdir(parents=True, exist_ok=True)
-print("code:", CODE)
-print("run :", RUN)'''))
+        cells.append(form(COLAB_SETUP.replace("__REPO_URL__", REPO_URL).strip()))
 
         cells.append(form(r'''#@title 🖥️ Check the GPU { display-mode: "form" }
 #@markdown Boltz-2 needs a CUDA GPU. This cell **stops the notebook** if there is not one,
@@ -191,17 +261,28 @@ BLUE, GREY, AMBER = "#1F5FBF", "#9aa0a6", "#E08A1E"
 #@markdown Every unit below is one structure prediction, so these set the GPU budget.
 #@markdown On a T4 a 100-aa receptor with an 80-aa binder takes roughly 1–2 minutes each.
 #@markdown
-#@markdown `N_SEED` is the one to think about. Seeds are spent measuring designs the
-#@markdown generator already made, and the best of them is where the loop starts, so a
-#@markdown large sample starts the run near the pool's ceiling and leaves the loop
-#@markdown nothing visible to do. Ten is enough to train on and leaves roughly twice the
-#@markdown headroom of sixteen.
+#@markdown Ten initial labels make this a small demonstration. More labels can improve
+#@markdown coverage, especially when the starting sequences are genuinely diverse.
+#@markdown Keep the initial batch and oracle settings fixed when comparing algorithms.
 N_SEED       = 10   #@param {type:"integer"}
 N_ROUNDS     = 5    #@param {type:"integer"}
 N_PER_ROUND  = 5    #@param {type:"integer"}
 #@markdown Mutants ranked by the surrogate each round. Costs no oracle calls, so this can
-#@markdown be large; the sampler proposes roughly 500 per round.
+#@markdown be large; the default ranks 600 proposals per round.
 N_CANDIDATES = 600  #@param {type:"integer"}
+#@markdown Default: wider exploration (8/8/4 positions for an 80-aa binder).
+#@markdown Alternative tested setting: 0.0625 / 0.0625 / 0.0375 with refinement enabled.
+MIN_POOL_DISTANCE = 0.10  #@param {type:"number"}
+MIN_BATCH_DISTANCE = 0.10  #@param {type:"number"}
+MIN_HISTORY_DISTANCE = 0.05  #@param {type:"number"}
+MAX_PER_FOUNDER = 2  #@param {type:"integer"}
+MIN_FOUNDERS = 3  #@param {type:"integer"}
+#@markdown Optional: prioritise measured novel parents and refine locally.
+USE_NOVEL_REFINEMENT = False  #@param {type:"boolean"}
+from binderopt.diversity import DiversityPolicy
+policy = DiversityPolicy(MIN_POOL_DISTANCE, MIN_BATCH_DISTANCE,
+                         MIN_HISTORY_DISTANCE, MAX_PER_FOUNDER, MIN_FOUNDERS,
+                         USE_NOVEL_REFINEMENT)
 
 _total = N_SEED + N_ROUNDS * N_PER_ROUND
 print("%d structure predictions in total" % _total)
@@ -280,7 +361,9 @@ get_generator("file", path="my_designs.csv")        # anything, from any tool
 get_generator("rfdiffusion_mpnn", config=cfg)       # run the pipeline here
 ```
 
-The pool shipped here is 100 RFdiffusion + ProteinMPNN designs for TrkA. **Point
+The pool shipped here contains 100 TrkA candidates. It is highly redundant: 92 sequences
+have another pool sequence only one residue away. It illustrates constrained sequence
+optimisation rather than 100 distinct binder families. **Point
 `POOL_PATH` at your own CSV or FASTA and the rest of the notebook is unchanged.**"""),
 
         form(r'''#@title 2. The starting pool { display-mode: "form" }
@@ -301,9 +384,31 @@ generator = get_generator("file", path=pool_path, sequence_column=SEQ_COLUMN,
                           expect_length=BINDER_LENGTH or None)
 pool = generator.generate(10_000)
 
+#@markdown Optional CSV listing an explicit starting batch (same sequence column).
+#@markdown This changes the starting condition; record any score-based exclusions.
+SEED_BATCH_PATH = ""  #@param {type:"string"}
+seed_selection = {"mode": "random", "random_seed": 0}
 rng = np.random.default_rng(0)
-seed_designs = [pool[i] for i in rng.choice(len(pool), size=min(N_SEED, len(pool)),
-                                            replace=False)]
+if SEED_BATCH_PATH:
+    seed_path = Path(SEED_BATCH_PATH)
+    if not seed_path.is_absolute():
+        seed_path = CODE / seed_path
+    seed_generator = get_generator("file", path=seed_path, sequence_column=SEQ_COLUMN,
+                                   expect_length=BINDER_LENGTH or None)
+    seed_designs = seed_generator.generate(10_000)
+    if len(seed_designs) != N_SEED or not set(seed_designs) <= set(pool):
+        raise ValueError("Explicit starting batch must contain N_SEED unique sequences from the pool")
+    seed_selection = {"mode": "explicit", "path": str(seed_path)}
+    manifest_path = seed_path.with_suffix(".selection.json")
+    if manifest_path.exists():
+        seed_selection["selection_manifest"] = json.loads(manifest_path.read_text())
+else:
+    if len(pool) < N_SEED:
+        raise ValueError("Starting pool is smaller than N_SEED")
+    seed_designs = [pool[i] for i in rng.choice(len(pool), size=N_SEED, replace=False)]
+if len({len(s) for s in pool}) != 1:
+    raise ValueError("Distance-constrained substitution search requires equal-length binders")
+print("starting-batch selection:", json.dumps(seed_selection))
 print("%s: %d designs of %d aa | %d sampled to measure"
       % (generator.describe(), len(pool), len(pool[0]), len(seed_designs)))'''),
     ]
@@ -401,13 +506,23 @@ from binderopt.oracles.metrics import describe as describe_metrics
 
 HISTORY_PATH = RUN / "history.json"
 history = json.loads(HISTORY_PATH.read_text()) if HISTORY_PATH.exists() else []
+# Check run identity before spending initial predictions or reusing a checkpoint.
+policy_path = RUN / "search_policy.json"
+policy_record = {"policy": policy.to_dict(), "seed_sequences": seed_designs,
+                 "reference_pool": pool, "n_per_round": N_PER_ROUND,
+                 "n_rounds": N_ROUNDS, "n_candidates": N_CANDIDATES}
+if history and not policy_path.exists():
+    raise RuntimeError("This RUN contains results from another search; choose a fresh directory")
+if policy_path.exists() and json.loads(policy_path.read_text()) != policy_record:
+    raise RuntimeError("Search settings changed: choose a fresh RUN directory")
+policy_path.write_text(json.dumps(policy_record, indent=2))
 
 
 def save_history():
     HISTORY_PATH.write_text(json.dumps(history, indent=1))
 
 
-def measure(sequences, rnd):
+def measure(sequences, rnd, metadata=None):
     """Predict each sequence, checkpointing after every one.
 
     Per design rather than per round: a round is 15-30 minutes of GPU time, and Colab
@@ -423,7 +538,8 @@ def measure(sequences, rnd):
     for n, seq in enumerate(todo, 1):
         t0 = time.time()
         for record in evaluator.evaluate([seq], iteration=rnd):
-            history.append(dict(round=rnd, **record))
+            details = (metadata or {}).get(seq, {})
+            history.append(dict(round=rnd, **record, **details))
             save_history()
             print("  [%d/%d] %s  %.1f min" % (n, len(todo), describe_metrics(record),
                                               (time.time() - t0) / 60), flush=True)
@@ -431,7 +547,12 @@ def measure(sequences, rnd):
 
 
 t0 = time.time()
-measured = measure(seed_designs, 0)
+from binderopt.oracles.evaluator import sequence_id
+seed_metadata = {s: {"founder_id": sequence_id(s, 0), "parent_id": None,
+                     "mutations_from_parent": 0} for s in seed_designs}
+measured = measure(seed_designs, 0, seed_metadata)
+if len(measured) != N_SEED:
+    raise RuntimeError("Initial batch is incomplete; resolve prediction failures before continuing")
 mins = (time.time() - t0) / 60
 print("round 0: %d of %d designs measured, %.1f min"
       % (len(measured), len(seed_designs), mins))
@@ -452,15 +573,18 @@ print("best design:", describe_metrics(max(measured, key=objective)))'''),
 Each round, in full, with nothing hidden:
 
 1. **train** the surrogate on everything measured so far
-2. **propose** mutants of the current best designs
-3. **rank** them with the surrogate — thousands of candidates, no oracle calls
-4. **measure** only the top `N_PER_ROUND` with the oracle
+2. **propose** mutants from the best measured representative of several founding seeds;
+   enabling novel refinement instead prioritises novel representatives with initial-seed fallbacks
+3. **filter and rank** by distance to the entire starting pool and earlier new designs,
+   then surrogate score; select a batch with pairwise distance and founder caps
+4. **measure** exactly `N_PER_ROUND` accepted proposals with the oracle
 5. **keep** the results, checkpoint, repeat"""),
 
         form(r'''#@title 6. Run the loop { display-mode: "form" }
 import random
 from binderopt.models import MultiHeadSurrogate
 from binderopt.sampling import MultiMetricGuidedSampler
+from binderopt.diversity import choose_parents, propose_diverse, select_diverse
 
 random.seed(0); np.random.seed(0)
 surrogate = MultiHeadSurrogate(
@@ -469,46 +593,53 @@ surrogate = MultiHeadSurrogate(
     metric_weights={"i_ptm": 1.0},
     calculate_rmsd=False,
 )
-sampler = MultiMetricGuidedSampler(top_n_for_sampling=5)
-
+# With optional novel refinement, a novel parent can take a smaller local step.
+# The three global distance constraints stay active for every proposed sequence.
+minimum_step = max(1, policy.counts(len(pool[0]))[0])
+sampler = MultiMetricGuidedSampler(top_n_for_sampling=5, residue_sampling={
+    "min_mutations": minimum_step, "max_mutations": max(minimum_step, minimum_step + 4),
+})
 for rnd in range(1, N_ROUNDS + 1):
-    if any(h["round"] == rnd for h in history):
-        print("round %d: already done, skipping" % rnd)
+    # Round-specific randomness makes an interrupted round reproducible.
+    random.seed(rnd); np.random.seed(rnd)
+    existing = [h for h in history if h["round"] == rnd]
+    if len(existing) == N_PER_ROUND:
+        print("round %d: already complete, skipping" % rnd)
         continue
     t0 = time.time()
-
-    # 1 train on everything measured so far
-    seqs = [h["sequence"] for h in history]
-    surrogate.train(seqs, {"i_ptm": [h["i_ptm"] for h in history]})
-
-    # 2 propose mutants of the current best, guided by where their structures are worst.
-    #    residue_metrics is per binder residue, supplied by the oracle; a design without
-    #    it contributes None and gets random mutations instead of being dropped.
-    best = sorted(history, key=objective, reverse=True)[:5]
-    candidates = sampler.generate_candidates(
-        top_sequences=[h["sequence"] for h in best],
-        top_residue_metrics=[h.get("residue_metrics") or None for h in best],
-        current_iteration=rnd, max_iterations=N_ROUNDS,
-    )
-    known = set(seqs)
-    candidates = [c for c in dict.fromkeys(candidates) if c not in known][:N_CANDIDATES]
-    if not candidates:
-        print("round %d: the sampler proposed nothing new; stopping" % rnd)
-        break
-
-    # 3 rank with the surrogate, 4 measure only the top few
-    proposals, predicted = surrogate.top_n_selection(candidates, n=N_PER_ROUND)
-    results = measure(proposals, rnd)
-
-    got = [objective(m) for m in results]
-    guided = sum(1 for h in best if h.get("residue_metrics"))
+    # A persisted full batch allows resuming a partly measured round without reranking.
+    plan_path = RUN / ("round_%02d_plan.json" % rnd)
+    previous = [h for h in history if h["round"] < rnd]
+    parents = choose_parents(previous, objective, n=5, reference_pool=pool, policy=policy)
+    if plan_path.exists():
+        plan = json.loads(plan_path.read_text())
+        selected, candidate_count = plan["selected"], plan["candidate_count"]
+    else:
+        seqs = [h["sequence"] for h in previous]
+        surrogate.train(seqs, {"i_ptm": [h["i_ptm"] for h in previous]})
+        proposals = propose_diverse(sampler, parents, pool, previous, policy,
+                                    rnd, N_ROUNDS, N_CANDIDATES)
+        candidates = [p["sequence"] for p in proposals]
+        predictions = surrogate.predict(candidates)
+        predicted = surrogate.predict_combined_score(predictions=predictions)
+        selected = select_diverse(proposals, predicted, N_PER_ROUND, policy)
+        candidate_count = len(candidates)
+        plan_path.write_text(json.dumps({"candidate_count": candidate_count,
+                                        "selected": selected}, indent=2))
+    metadata = {p["sequence"]: {k: v for k, v in p.items() if k != "sequence"}
+                for p in selected}
+    results = measure([p["sequence"] for p in selected], rnd, metadata)
+    if len(results) != N_PER_ROUND:
+        raise RuntimeError("Round incomplete; rerun this cell to retry the saved batch")
+    predicted = np.array([p["surrogate_score"] for p in selected])
+    guided = sum(bool(h.get("residue_metrics")) for h in parents)
     print("round %d | %4d ranked (%d of %d parents structure-guided) | measured %d in "
           "%.1f min | surrogate %.3f-%.3f | best this round %.3f (run best %.3f)"
-          % (rnd, len(candidates), guided, len(best), len(results),
+          % (rnd, candidate_count, guided, len(parents), len(results),
              (time.time() - t0) / 60, predicted.min(), predicted.max(),
-             max(got) if got else float("nan"),
-             max(objective(h) for h in history)))
-
+             max(objective(h) for h in results), max(objective(h) for h in history)))
+    print("  nearest-pool substitutions:", [h["mutations_from_pool"] for h in results],
+          "| founding seeds:", len({h["founder_id"] for h in results}))
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
@@ -520,36 +651,16 @@ def results_cells(colab: bool):
     cells = [
         md(r"""## 7 The trajectory
 
-What the run just produced. Each point is one design the oracle measured; the line follows
-the best objective value reached so far."""),
+Scores and sequence exploration from the run just measured. The round median may go
+up or down; the best-so-far curve is cumulative. Distance panels show whether high scores
+come from near copies. Round 0 is the selected initial batch, not the full pool."""),
 
         form(r'''#@title 7. Trajectory { display-mode: "form" }
+from binderopt.demo_reporting import annotate_distances, plot_trajectory
+annotate_distances(history, pool)
+save_history()
 rounds = sorted({h["round"] for h in history})
-fig, axes = plt.subplots(1, 2, figsize=(6.8, 2.8))
-
-ax = axes[0]
-ax.scatter([h["round"] for h in history], [objective(h) for h in history],
-           s=22, color=GREY, edgecolor="white", linewidths=0.3, zorder=2,
-           label="each design")
-running = [max(objective(h) for h in history if h["round"] <= r) for r in rounds]
-ax.plot(rounds, running, "-o", color=BLUE, lw=1.3, ms=3.5, zorder=3, label="best so far")
-ax.set(xlabel="Round", ylabel=describe(objective).capitalize(), xticks=rounds)
-ax.legend(fontsize=7.5, loc="lower right")
-
-ax = axes[1]
-for key, colour, label in (("i_ptm", BLUE, "interface pTM"),
-                           ("min_pae_interaction", AMBER, "interface PAE (Å)")):
-    per_round = [[h[key] for h in history if h["round"] == r] for r in rounds]
-    if all(np.isnan(v).all() for v in per_round):
-        continue            # NaN throughout, e.g. no PAE written: draw nothing
-    target_ax = ax if key == "i_ptm" else ax.twinx()
-    target_ax.plot(rounds, [np.nanmedian(v) for v in per_round],
-                   "-o", color=colour, lw=1.2, ms=3.2)
-    target_ax.set_ylabel(label, color=colour)
-    target_ax.tick_params(axis="y", colors=colour)
-ax.set(xlabel="Round", xticks=rounds)
-fig.tight_layout()
-fig.savefig(RUN / "trajectory.png", dpi=200, bbox_inches="tight")
+fig = plot_trajectory(history, objective, policy, RUN / "trajectory.png")
 plt.show()
 
 first = [objective(h) for h in history if h["round"] == 0]
@@ -558,7 +669,7 @@ print("objective: round 0 median %.3f → round %d median %.3f (run best %.3f)"
       % (np.median(first), rounds[-1], np.median(last),
          max(objective(h) for h in history)))'''),
 
-        md(r"""With three rounds of five designs this shows the loop **running**, not that the
+        md(r"""With five rounds of five designs this shows the loop **running**, not that the
 method works. Raise `N_ROUNDS` if you want the trend rather than the mechanics."""),
 
         md("## 8 The best design"),
@@ -566,7 +677,11 @@ method works. Raise `N_ROUNDS` if you want the trend rather than the mechanics."
         form(r'''#@title 8. The best design { display-mode: "form" }
 import py3Dmol
 
-top = max(history, key=objective)
+new_designs = [h for h in history if h["round"] > 0]
+top = max(new_designs or history, key=objective)
+print("Best new design; overall best including seeds: %.3f" % max(objective(h) for h in history))
+print("Nearest starting-pool sequence: %d substitutions, %.1f%% identity"
+      % (top["mutations_from_pool"], 100 * top["identity_to_pool"]))
 pae = top.get("min_pae_interaction", float("nan"))
 print("objective %.3f | interface pTM %.3f | interface PAE %s | round %d"
       % (objective(top), top["i_ptm"],
@@ -589,7 +704,9 @@ else:
 import csv
 
 FIELDS = ["round", "sequence_id", "sequence", "objective", "i_ptm", "ptm_binder",
-          "min_pae_interaction", "oracle", "oracle_version", "structure_file"]
+          "min_pae_interaction", "oracle", "oracle_version", "structure_file",
+          "parent_id", "founder_id", "mutations_from_parent", "mutations_from_founder",
+          "mutations_from_pool", "identity_to_pool", "surrogate_score"]
 with open(RUN / "trajectory.csv", "w", newline="") as fh:
     writer = csv.DictWriter(fh, fieldnames=FIELDS, extrasaction="ignore")
     writer.writeheader()
@@ -602,11 +719,26 @@ with open(RUN / "trajectory.csv", "w", newline="") as fh:
     "oracle": type(oracle).__name__, "oracle_version": oracle.oracle_version,
     "n_seed": N_SEED, "n_rounds": N_ROUNDS, "n_per_round": N_PER_ROUND,
     "n_candidates": N_CANDIDATES, "pool": str(pool_path),
-    "use_msa_server": USE_MSA_SERVER,
+    "use_msa_server": USE_MSA_SERVER, "seed_selection": seed_selection,
+    "diversity_policy": policy.to_dict(), "diffusion_samples": DIFFUSION_SAMPLES,
+    "recycling_steps": RECYCLING_STEPS,
 }, indent=2))
 
 print("wrote %s" % (RUN / "trajectory.csv"))
-print("     %d designs, %d columns" % (len(history), len(FIELDS)))'''),
+print("     %d designs, %d columns" % (len(history), len(FIELDS)))
+
+# A final high-scoring list must also retain sequence and founder diversity.
+from binderopt.demo_reporting import diverse_portfolio
+portfolio = diverse_portfolio(history, policy, n=N_PER_ROUND)
+with open(RUN / "diverse_portfolio.csv", "w", newline="") as fh:
+    writer = csv.DictWriter(fh, fieldnames=FIELDS, extrasaction="ignore")
+    writer.writeheader()
+    for h in portfolio:
+        writer.writerow({**h, "objective": objective(h)})
+print("Diverse measured portfolio (iPTM | substitutions from nearest starting sequence):")
+for h in portfolio:
+    print("  %s | %.3f | %d | founder %s" %
+          (h["sequence_id"], h["i_ptm"], h["mutations_from_pool"], h["founder_id"]))'''),
     ]
 
     if colab:

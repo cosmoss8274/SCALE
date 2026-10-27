@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/*_executed.ipynb
+
+# macOS
+.DS_Store
+
+# Run outputs. `run/` is where the notebook and design.py write; its contents are
+# per-run artefacts (predictions, structures, checkpoints), not source.
+run/*
+!run/.gitkeep
+
+# Oracle scratch
+boltz_results_*/
+*.a3m
+af3_batch_results/
+target_msa_cache/

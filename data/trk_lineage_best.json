@@ -1,0 +1,548 @@
+[
+ {
+  "rounds": [
+   0,
+   4,
+   15
+  ],
+  "ident": [
+   74,
+   75,
+   72
+  ],
+  "trka": [
+   0.84,
+   0.84,
+   0.87
+  ],
+  "trkc": [
+   0.67,
+   0.31,
+   0.14
+  ],
+  "trkb": [
+   0.17,
+   0.26,
+   0.25
+  ],
+  "pae_trka": [
+   1.23,
+   1.15,
+   0.98
+  ],
+  "pae_trkc": [
+   2.67,
+   7.8,
+   12.84
+  ],
+  "sha": [
+   "1518f9e2913c",
+   "eadd76edb309",
+   "3310a4477922"
+  ],
+  "files": [
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter116_seq000_0a96d38565de78f1/scale_trka_eadd76edb3095430_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter116_seq000_0a96d38565de78f1/scale_trka_eadd76edb3095430_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter116_seq000_0a96d38565de78f1/scale_trkb_eadd76edb3095430_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter116_seq000_0a96d38565de78f1/scale_trkb_eadd76edb3095430_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter116_seq000_0a96d38565de78f1/scale_trkc_eadd76edb3095430_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter116_seq000_0a96d38565de78f1/scale_trkc_eadd76edb3095430_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_confidences.json"
+    }
+   }
+  ],
+  "seqs": [
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAWVEVLVNGKPAGENVRVVEVRTEDGKCVLLAIILKDTPEEETKVDVKVITP",
+   "MGEVKVSPAFMTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDAPEEETKVDVKVITP",
+   "MGEVKVSPAFKTKYGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEWEEETKVDVMVITP"
+  ]
+ },
+ {
+  "rounds": [
+   0,
+   4,
+   15
+  ],
+  "ident": [
+   74,
+   76,
+   72
+  ],
+  "trka": [
+   0.84,
+   0.84,
+   0.87
+  ],
+  "trkc": [
+   0.67,
+   0.24,
+   0.14
+  ],
+  "trkb": [
+   0.17,
+   0.27,
+   0.25
+  ],
+  "pae_trka": [
+   1.23,
+   1.1,
+   0.98
+  ],
+  "pae_trkc": [
+   2.67,
+   8.93,
+   12.84
+  ],
+  "sha": [
+   "1518f9e2913c",
+   "25866bfc3e02",
+   "3310a4477922"
+  ],
+  "files": [
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter118_seq000_f097ff7149cdcc8b/scale_trka_25866bfc3e02c04d_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter118_seq000_f097ff7149cdcc8b/scale_trka_25866bfc3e02c04d_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter118_seq000_f097ff7149cdcc8b/scale_trkb_25866bfc3e02c04d_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter118_seq000_f097ff7149cdcc8b/scale_trkb_25866bfc3e02c04d_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter118_seq000_f097ff7149cdcc8b/scale_trkc_25866bfc3e02c04d_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter118_seq000_f097ff7149cdcc8b/scale_trkc_25866bfc3e02c04d_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_confidences.json"
+    }
+   }
+  ],
+  "seqs": [
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAWVEVLVNGKPAGENVRVVEVRTEDGKCVLLAIILKDTPEEETKVDVKVITP",
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDACEEETKVDVKVITP",
+   "MGEVKVSPAFKTKYGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEWEEETKVDVMVITP"
+  ]
+ },
+ {
+  "rounds": [
+   0,
+   4,
+   15
+  ],
+  "ident": [
+   73,
+   74,
+   72
+  ],
+  "trka": [
+   0.84,
+   0.84,
+   0.87
+  ],
+  "trkc": [
+   0.67,
+   0.46,
+   0.14
+  ],
+  "trkb": [
+   0.17,
+   0.19,
+   0.25
+  ],
+  "pae_trka": [
+   1.23,
+   1.17,
+   0.98
+  ],
+  "pae_trkc": [
+   2.67,
+   4.95,
+   12.84
+  ],
+  "sha": [
+   "1518f9e2913c",
+   "27f41c0ca2cb",
+   "3310a4477922"
+  ],
+  "files": [
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter119_seq000_7971ce6a895c10e0/scale_trka_27f41c0ca2cb363d_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter119_seq000_7971ce6a895c10e0/scale_trka_27f41c0ca2cb363d_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter119_seq000_7971ce6a895c10e0/scale_trkb_27f41c0ca2cb363d_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter119_seq000_7971ce6a895c10e0/scale_trkb_27f41c0ca2cb363d_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter119_seq000_7971ce6a895c10e0/scale_trkc_27f41c0ca2cb363d_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter119_seq000_7971ce6a895c10e0/scale_trkc_27f41c0ca2cb363d_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_confidences.json"
+    }
+   }
+  ],
+  "seqs": [
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAWVEVLVNGKPAGENVRVVEVRTEDGKCVLLAIILKDTPEEETKVDVKVITP",
+   "MGEVKVSPAFKTAHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAILLPDAPEEETKVDVKVITP",
+   "MGEVKVSPAFKTKYGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEWEEETKVDVMVITP"
+  ]
+ },
+ {
+  "rounds": [
+   0,
+   4,
+   15
+  ],
+  "ident": [
+   74,
+   75,
+   72
+  ],
+  "trka": [
+   0.84,
+   0.85,
+   0.87
+  ],
+  "trkc": [
+   0.67,
+   0.23,
+   0.14
+  ],
+  "trkb": [
+   0.17,
+   0.27,
+   0.25
+  ],
+  "pae_trka": [
+   1.23,
+   1.04,
+   0.98
+  ],
+  "pae_trkc": [
+   2.67,
+   9.71,
+   12.84
+  ],
+  "sha": [
+   "1518f9e2913c",
+   "3b738c612e3d",
+   "3310a4477922"
+  ],
+  "files": [
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter120_seq000_7f630a9ed87563ec/scale_trka_3b738c612e3d812e_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter120_seq000_7f630a9ed87563ec/scale_trka_3b738c612e3d812e_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter120_seq000_7f630a9ed87563ec/scale_trkb_3b738c612e3d812e_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter120_seq000_7f630a9ed87563ec/scale_trkb_3b738c612e3d812e_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter120_seq000_7f630a9ed87563ec/scale_trkc_3b738c612e3d812e_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter120_seq000_7f630a9ed87563ec/scale_trkc_3b738c612e3d812e_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_confidences.json"
+    }
+   }
+  ],
+  "seqs": [
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAWVEVLVNGKPAGENVRVVEVRTEDGKCVLLAIILKDTPEEETKVDVKVITP",
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDAPEEECKVDVKVITP",
+   "MGEVKVSPAFKTKYGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEWEEETKVDVMVITP"
+  ]
+ },
+ {
+  "rounds": [
+   0,
+   5,
+   15
+  ],
+  "ident": [
+   73,
+   75,
+   72
+  ],
+  "trka": [
+   0.84,
+   0.84,
+   0.87
+  ],
+  "trkc": [
+   0.67,
+   0.34,
+   0.14
+  ],
+  "trkb": [
+   0.17,
+   0.39,
+   0.25
+  ],
+  "pae_trka": [
+   1.23,
+   1.13,
+   0.98
+  ],
+  "pae_trkc": [
+   2.67,
+   4.91,
+   12.84
+  ],
+  "sha": [
+   "1518f9e2913c",
+   "c08693c4aac3",
+   "3310a4477922"
+  ],
+  "files": [
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter121_seq000_76c2616f2d2f8c7d/scale_trka_c08693c4aac3a268_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter121_seq000_76c2616f2d2f8c7d/scale_trka_c08693c4aac3a268_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter121_seq000_76c2616f2d2f8c7d/scale_trkb_c08693c4aac3a268_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter121_seq000_76c2616f2d2f8c7d/scale_trkb_c08693c4aac3a268_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter121_seq000_76c2616f2d2f8c7d/scale_trkc_c08693c4aac3a268_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter121_seq000_76c2616f2d2f8c7d/scale_trkc_c08693c4aac3a268_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_confidences.json"
+    }
+   }
+  ],
+  "seqs": [
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAWVEVLVNGKPAGENVRVVEVRTEDGKCVLLAIILKDTPEEETKVDVKVITP",
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWALLAIILPDACEEETKVDVKVITP",
+   "MGEVKVSPAFKTKYGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEWEEETKVDVMVITP"
+  ]
+ },
+ {
+  "rounds": [
+   0,
+   5,
+   15
+  ],
+  "ident": [
+   73,
+   75,
+   72
+  ],
+  "trka": [
+   0.84,
+   0.84,
+   0.87
+  ],
+  "trkc": [
+   0.67,
+   0.4,
+   0.14
+  ],
+  "trkb": [
+   0.17,
+   0.29,
+   0.25
+  ],
+  "pae_trka": [
+   1.23,
+   1.13,
+   0.98
+  ],
+  "pae_trkc": [
+   2.67,
+   4.78,
+   12.84
+  ],
+  "sha": [
+   "1518f9e2913c",
+   "c7ed9105ec0f",
+   "3310a4477922"
+  ],
+  "files": [
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter026_seq000_f4ba99f710828297/scale_trka_1518f9e2913c49da_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter026_seq000_f4ba99f710828297/scale_trkb_1518f9e2913c49da_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter026_seq000_f4ba99f710828297/scale_trkc_1518f9e2913c49da_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter122_seq000_4b8de3a0823b8ed3/scale_trka_c7ed9105ec0ff053_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter122_seq000_4b8de3a0823b8ed3/scale_trka_c7ed9105ec0ff053_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter122_seq000_4b8de3a0823b8ed3/scale_trkb_c7ed9105ec0ff053_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter122_seq000_4b8de3a0823b8ed3/scale_trkb_c7ed9105ec0ff053_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter122_seq000_4b8de3a0823b8ed3/scale_trkc_c7ed9105ec0ff053_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter122_seq000_4b8de3a0823b8ed3/scale_trkc_c7ed9105ec0ff053_confidences.json"
+    }
+   },
+   {
+    "TRKA": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKA/mutation_iter174_seq000_77d2668c174c6c87/scale_trka_3310a44779228baf_confidences.json"
+    },
+    "TRKB": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKB/mutation_iter174_seq000_77d2668c174c6c87/scale_trkb_3310a44779228baf_confidences.json"
+    },
+    "TRKC": {
+     "structure_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_model.cif",
+     "json_file": "/data/projects/11004455/e0983548/scale_1019_2026/runs/trk_multi_seed0/joint/structures/TRKC/mutation_iter174_seq000_77d2668c174c6c87/scale_trkc_3310a44779228baf_confidences.json"
+    }
+   }
+  ],
+  "seqs": [
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAWVEVLVNGKPAGENVRVVEVRTEDGKCVLLAIILKDTPEEETKVDVKVITP",
+   "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTWDGKWVLLAIILPDACEEETKVDVKVITP",
+   "MGEVKVSPAFKTKYGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEWEEETKVDVMVITP"
+  ]
+ }
+]

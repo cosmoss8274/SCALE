@@ -1,0 +1,100 @@
+{
+ "_definitions": {
+  "designs": "30 TrkA hits (interface PAE <= 1.5 A and i-pTM >= 0.80 in the source run)",
+  "targets": {
+   "TrkA": "P04629 282-382",
+   "TrkB": "Q16620 283-385",
+   "TrkC": "Q16288 300-404"
+  },
+  "msa": "one AlphaFold Server submission for all three receptors; binder chain MSA empty",
+  "caveat": "predicted interface pTM, not measured binding"
+ },
+ "per_target": {
+  "TrkA": {
+   "i_ptm": {
+    "median": 0.84,
+    "min": 0.79,
+    "max": 0.88,
+    "iqr": [
+     0.84,
+     0.85
+    ],
+    "n": 30
+   },
+   "min_pae_interaction": {
+    "median": 1.16,
+    "min": 0.96,
+    "max": 1.53,
+    "iqr": [
+     1.1125,
+     1.22
+    ],
+    "n": 30
+   }
+  },
+  "TrkB": {
+   "i_ptm": {
+    "median": 0.25,
+    "min": 0.16,
+    "max": 0.56,
+    "iqr": [
+     0.2125,
+     0.285
+    ],
+    "n": 30
+   },
+   "min_pae_interaction": {
+    "median": 9.21,
+    "min": 4.66,
+    "max": 15.24,
+    "iqr": [
+     7.1875,
+     11.465
+    ],
+    "n": 30
+   }
+  },
+  "TrkC": {
+   "i_ptm": {
+    "median": 0.435,
+    "min": 0.31,
+    "max": 0.58,
+    "iqr": [
+     0.3925,
+     0.5
+    ],
+    "n": 30
+   },
+   "min_pae_interaction": {
+    "median": 4.55,
+    "min": 2.85,
+    "max": 6.4,
+    "iqr": [
+     4.0925,
+     5.2575
+    ],
+    "n": 30
+   }
+  }
+ },
+ "paired": {
+  "TrkB": {
+   "drop_median": 0.595,
+   "drop_min": 0.29,
+   "drop_max": 0.65,
+   "wilcoxon_p": 8.585052591922721e-07,
+   "n": 30,
+   "off_target_ge_0.50": 1,
+   "off_target_ge_0.70": 0
+  },
+  "TrkC": {
+   "drop_median": 0.405,
+   "drop_min": 0.24,
+   "drop_max": 0.53,
+   "wilcoxon_p": 8.606717946953196e-07,
+   "n": 30,
+   "off_target_ge_0.50": 9,
+   "off_target_ge_0.70": 0
+  }
+ }
+}

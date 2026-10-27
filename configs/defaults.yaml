@@ -1,0 +1,96 @@
+# Shared defaults for all targets. Target yaml files in configs/targets/
+# override any of these keys (deep-merged, target values win).
+
+# Optimization loop
+n_iterations: 30
+mutants_per_round: 5
+top_n_for_sampling: 30
+checkpoint_frequency: 1
+
+# Model / embeddings
+esm2_model: "esm2_t36_3B_UR50D"
+surrogate_model: "random_forest"
+batch_size_gpu: 8
+batch_size_cpu: 32
+amino_acids: "ACDEFGHIKLMNPQRSTVWY"
+
+# Evaluation
+use_af3: true
+use_protenix: false
+calculate_rmsd: true
+af3_db_dir: "${SCALE_AF3_DB_DIR}"
+af3_model_dir: "${SCALE_AF3_MODEL_DIR}"
+
+# Global metric weights for combined scoring.
+# 'nll' is new: lower ProteinMPNN/RFdiffusion NLL = more designable = better,
+# hence a negative (but modest, secondary/regularizing) weight. NLL is only
+# populated for sequences sourced from ProteinMPNN/RFdiffusion metadata
+# (initial CSV 'nll' column, or injected design_*.json 'nll' field) -- see
+# binderopt/models.py MultiHeadSurrogate._train_random_forest for how the nll
+# head handles partially-missing labels.
+metric_weights:
+  plddt: -3.0
+  i_ptm: 10.0
+  pae_intra: -1.5
+  pae_inter: -4.0
+  con_intra: -0.15
+  con_inter: -1.0
+  rg: -0.15
+  helix: -0.8
+  termini: -0.03
+  l_rmsd: -1.0
+  nll: -1.0
+
+af3_thresholds:
+  min_pae_interaction: 1.5
+  ptm_binder: 0.76
+  l_rmsd: 2.5
+
+# Adaptive weight learning (off by default; metric_weights above are fixed).
+learn_weights: false
+weight_retrain_start: 0
+weight_retrain_interval: 9999
+
+# Sequence injection (off by default; enable per-target in configs/targets/*.yaml).
+injection_enabled: false
+injection_interval: 3
+n_seqs_to_inject: 50
+injection_sources: {}
+use_injected_as_parents: true
+
+# Active per-candidate ProteinMPNN NLL scoring (on by default). After AF3
+# evaluates a freshly-mutated candidate this iteration, also score that
+# candidate's binder sequence against its own AF3 structure with real
+# ProteinMPNN in score_only mode (binderopt/mpnn_scorer.py), so the 'nll'
+# metric above actually drives optimization for *new* sequences too, not
+# just passively-inherited metadata. Falls back to NaN per-sequence if the
+# ProteinMPNN repo/env isn't available, or globally if set to false (e.g.
+# via --no_active_nll_scoring).
+active_nll_scoring: true
+initial_nll_score_limit: 9999
+
+# Residue-level guided mutation sampling.
+residue_sampling:
+  combined_mutations_per_seq: 70
+  interface_mutations_per_seq: 15
+  packing_mutations_per_seq: 10
+  plddt_mutations_per_seq: 10
+  helix_mutations_per_seq: 5
+  random_mutations_total: 20
+  residue_weights:
+    interface_score: 0.5
+    packing_score: 0.15
+    confidence_score: 0.3
+    helix_score: 0.05
+  progressive_decay_rate: 3.0
+
+# Random Forest hyperparameters for the surrogate's per-metric heads.
+rf_params:
+  n_estimators: 100
+  criterion: "friedman_mse"
+  max_depth: null
+  min_samples_split: 2
+  min_samples_leaf: 1
+  bootstrap: true
+  n_jobs: -1
+  random_state: 1

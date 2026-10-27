@@ -1,0 +1,62 @@
+{
+ "BHRF1": {
+  "pdb": "2WH6",
+  "interface": "A_B",
+  "partner": "Bim BH3 peptide",
+  "dsasa": 2975.3,
+  "dhsasa": 2586.0,
+  "dhsasa_frac": 0.8691,
+  "hbonds": 5,
+  "unsat": 5,
+  "sc": 0.7196,
+  "n_interface_res": 63
+ },
+ "SC2RBD": {
+  "pdb": "6M0J",
+  "interface": "E_A",
+  "partner": "ACE2",
+  "dsasa": 2524.6,
+  "dhsasa": 1736.1,
+  "dhsasa_frac": 0.6877,
+  "hbonds": 6,
+  "unsat": 11,
+  "sc": 0.7092,
+  "n_interface_res": 73
+ },
+ "TRKA": {
+  "pdb": "1WWW",
+  "interface": "X_VW",
+  "partner": "NGF dimer",
+  "dsasa": 3471.2,
+  "dhsasa": 3335.9,
+  "dhsasa_frac": 0.961,
+  "hbonds": 9,
+  "unsat": 7,
+  "sc": 0.7082,
+  "n_interface_res": 84
+ },
+ "MYBL2": {
+  "pdb": "6C48",
+  "interface": "AB_C",
+  "partner": "B-Myb peptide",
+  "dsasa": 3119.8,
+  "dhsasa": 2754.4,
+  "dhsasa_frac": 0.8829,
+  "hbonds": 2,
+  "unsat": 12,
+  "sc": 0.708,
+  "n_interface_res": 75
+ },
+ "HER2": {
+  "pdb": "3N85",
+  "interface": "A_LH",
+  "partner": "Fab37 Fab (not a physiological partner)",
+  "dsasa": 3328.6,
+  "dhsasa": 2307.7,
+  "dhsasa_frac": 0.6933,
+  "hbonds": 7,
+  "unsat": 18,
+  "sc": 0.6572,
+  "n_interface_res": 82
+ }
+}

@@ -1,0 +1,932 @@
+{
+ "contact_cutoff_A": 4.5,
+ "binder_length": 80,
+ "chain": [
+  {
+   "round": 0,
+   "sequence": "MGEVKVSPAFKTKHGHYLVLADVELPEGAWVEVLVNGKPAGENVRVVEVRTEDGKCVLLAIILKDTPEEETKVDVKVITP",
+   "d_from_ancestor": 0
+  },
+  {
+   "round": 1,
+   "sequence": "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRVVEVRTEDGKWVLLAIILPDAPEEETKVDVKVITP",
+   "d_from_ancestor": 4
+  },
+  {
+   "round": 2,
+   "sequence": "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRVVEVRTEDGKWVLLAIILPDAPAEETKVDVKVITP",
+   "d_from_ancestor": 5
+  },
+  {
+   "round": 3,
+   "sequence": "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDAPEEETKVDVKVITP",
+   "d_from_ancestor": 5
+  },
+  {
+   "round": 4,
+   "sequence": "MGEVKVSPAFMTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDAPEEETKVDVKVITP",
+   "d_from_ancestor": 6
+  },
+  {
+   "round": 5,
+   "sequence": "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDAMEEETKVDVKVITP",
+   "d_from_ancestor": 6
+  },
+  {
+   "round": 6,
+   "sequence": "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEMEEETKVDVKVITP",
+   "d_from_ancestor": 6
+  },
+  {
+   "round": 7,
+   "sequence": "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENARMVEVRTEDGKWVLLAIILPDEMEEETKVDVKVITP",
+   "d_from_ancestor": 7
+  },
+  {
+   "round": 8,
+   "sequence": "MGEVKVSPAFKSKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEMEEETKVDVKVITP",
+   "d_from_ancestor": 7
+  },
+  {
+   "round": 9,
+   "sequence": "MGEVKVSPAFKTKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMIEVRTEDGKWVLLAIILPDEMEEETKVDVKVITP",
+   "d_from_ancestor": 7
+  },
+  {
+   "round": 10,
+   "sequence": "MGEVKVSPAFKTSHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMIEVRTEDGKWVLLAIILPDEMEEETKVDVKVITP",
+   "d_from_ancestor": 8
+  },
+  {
+   "round": 11,
+   "sequence": "MGEVKVSPAFKSKHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMIEVRTEDGKWVLLAIILPDEMEEETKVDVKVITP",
+   "d_from_ancestor": 8
+  },
+  {
+   "round": 12,
+   "sequence": "MGEVKVSPAFKTSHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMIEVRTEDGKWVILAIILPDEMEEETKVDVKVITP",
+   "d_from_ancestor": 9
+  },
+  {
+   "round": 13,
+   "sequence": "MGEVKVSPAFKTSHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEMEEETKVDVKVITP",
+   "d_from_ancestor": 7
+  },
+  {
+   "round": 14,
+   "sequence": "MGEVKVSPAFKTWHGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEWEEETKVDVKVITP",
+   "d_from_ancestor": 7
+  },
+  {
+   "round": 15,
+   "sequence": "MGEVKVSPAFKTKYGHYLVLADVELPEGAKVEVLVNGKPAGENVRMVEVRTEDGKWVLLAIILPDEWEEETKVDVMVITP",
+   "d_from_ancestor": 8
+  }
+ ],
+ "divergence": {
+  "joint": [
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 2,
+    "d": 2
+   },
+   {
+    "iteration": 2,
+    "d": 1
+   },
+   {
+    "iteration": 2,
+    "d": 2
+   },
+   {
+    "iteration": 2,
+    "d": 2
+   },
+   {
+    "iteration": 2,
+    "d": 1
+   },
+   {
+    "iteration": 3,
+    "d": 2
+   },
+   {
+    "iteration": 3,
+    "d": 3
+   },
+   {
+    "iteration": 3,
+    "d": 2
+   },
+   {
+    "iteration": 3,
+    "d": 2
+   },
+   {
+    "iteration": 3,
+    "d": 2
+   },
+   {
+    "iteration": 4,
+    "d": 3
+   },
+   {
+    "iteration": 4,
+    "d": 2
+   },
+   {
+    "iteration": 4,
+    "d": 3
+   },
+   {
+    "iteration": 4,
+    "d": 4
+   },
+   {
+    "iteration": 4,
+    "d": 3
+   },
+   {
+    "iteration": 5,
+    "d": 4
+   },
+   {
+    "iteration": 5,
+    "d": 4
+   },
+   {
+    "iteration": 5,
+    "d": 2
+   },
+   {
+    "iteration": 5,
+    "d": 4
+   },
+   {
+    "iteration": 5,
+    "d": 3
+   },
+   {
+    "iteration": 6,
+    "d": 4
+   },
+   {
+    "iteration": 6,
+    "d": 2
+   },
+   {
+    "iteration": 6,
+    "d": 4
+   },
+   {
+    "iteration": 6,
+    "d": 3
+   },
+   {
+    "iteration": 6,
+    "d": 4
+   },
+   {
+    "iteration": 7,
+    "d": 4
+   },
+   {
+    "iteration": 7,
+    "d": 4
+   },
+   {
+    "iteration": 7,
+    "d": 4
+   },
+   {
+    "iteration": 7,
+    "d": 4
+   },
+   {
+    "iteration": 7,
+    "d": 5
+   },
+   {
+    "iteration": 8,
+    "d": 3
+   },
+   {
+    "iteration": 8,
+    "d": 4
+   },
+   {
+    "iteration": 8,
+    "d": 5
+   },
+   {
+    "iteration": 8,
+    "d": 4
+   },
+   {
+    "iteration": 8,
+    "d": 5
+   },
+   {
+    "iteration": 9,
+    "d": 4
+   },
+   {
+    "iteration": 9,
+    "d": 4
+   },
+   {
+    "iteration": 9,
+    "d": 4
+   },
+   {
+    "iteration": 9,
+    "d": 5
+   },
+   {
+    "iteration": 9,
+    "d": 6
+   },
+   {
+    "iteration": 10,
+    "d": 5
+   },
+   {
+    "iteration": 10,
+    "d": 5
+   },
+   {
+    "iteration": 10,
+    "d": 5
+   },
+   {
+    "iteration": 10,
+    "d": 6
+   },
+   {
+    "iteration": 10,
+    "d": 6
+   },
+   {
+    "iteration": 11,
+    "d": 6
+   },
+   {
+    "iteration": 11,
+    "d": 5
+   },
+   {
+    "iteration": 11,
+    "d": 6
+   },
+   {
+    "iteration": 11,
+    "d": 5
+   },
+   {
+    "iteration": 11,
+    "d": 4
+   },
+   {
+    "iteration": 12,
+    "d": 6
+   },
+   {
+    "iteration": 12,
+    "d": 7
+   },
+   {
+    "iteration": 12,
+    "d": 5
+   },
+   {
+    "iteration": 12,
+    "d": 5
+   },
+   {
+    "iteration": 12,
+    "d": 5
+   },
+   {
+    "iteration": 13,
+    "d": 5
+   },
+   {
+    "iteration": 13,
+    "d": 7
+   },
+   {
+    "iteration": 13,
+    "d": 5
+   },
+   {
+    "iteration": 13,
+    "d": 5
+   },
+   {
+    "iteration": 13,
+    "d": 5
+   },
+   {
+    "iteration": 14,
+    "d": 5
+   },
+   {
+    "iteration": 14,
+    "d": 6
+   },
+   {
+    "iteration": 14,
+    "d": 5
+   },
+   {
+    "iteration": 14,
+    "d": 5
+   },
+   {
+    "iteration": 14,
+    "d": 6
+   },
+   {
+    "iteration": 15,
+    "d": 7
+   },
+   {
+    "iteration": 15,
+    "d": 5
+   },
+   {
+    "iteration": 15,
+    "d": 6
+   },
+   {
+    "iteration": 15,
+    "d": 6
+   },
+   {
+    "iteration": 15,
+    "d": 5
+   }
+  ],
+  "TrkA-only": [
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 1,
+    "d": 1
+   },
+   {
+    "iteration": 2,
+    "d": 2
+   },
+   {
+    "iteration": 2,
+    "d": 1
+   },
+   {
+    "iteration": 2,
+    "d": 1
+   },
+   {
+    "iteration": 2,
+    "d": 2
+   },
+   {
+    "iteration": 2,
+    "d": 1
+   },
+   {
+    "iteration": 3,
+    "d": 2
+   },
+   {
+    "iteration": 3,
+    "d": 2
+   },
+   {
+    "iteration": 3,
+    "d": 1
+   },
+   {
+    "iteration": 3,
+    "d": 1
+   },
+   {
+    "iteration": 3,
+    "d": 2
+   },
+   {
+    "iteration": 4,
+    "d": 3
+   },
+   {
+    "iteration": 4,
+    "d": 3
+   },
+   {
+    "iteration": 4,
+    "d": 2
+   },
+   {
+    "iteration": 4,
+    "d": 2
+   },
+   {
+    "iteration": 4,
+    "d": 2
+   },
+   {
+    "iteration": 5,
+    "d": 1
+   },
+   {
+    "iteration": 5,
+    "d": 2
+   },
+   {
+    "iteration": 5,
+    "d": 3
+   },
+   {
+    "iteration": 5,
+    "d": 3
+   },
+   {
+    "iteration": 5,
+    "d": 2
+   },
+   {
+    "iteration": 6,
+    "d": 2
+   },
+   {
+    "iteration": 6,
+    "d": 1
+   },
+   {
+    "iteration": 6,
+    "d": 2
+   },
+   {
+    "iteration": 6,
+    "d": 3
+   },
+   {
+    "iteration": 6,
+    "d": 1
+   },
+   {
+    "iteration": 7,
+    "d": 3
+   },
+   {
+    "iteration": 7,
+    "d": 2
+   },
+   {
+    "iteration": 7,
+    "d": 1
+   },
+   {
+    "iteration": 7,
+    "d": 3
+   },
+   {
+    "iteration": 7,
+    "d": 2
+   },
+   {
+    "iteration": 8,
+    "d": 2
+   },
+   {
+    "iteration": 8,
+    "d": 2
+   },
+   {
+    "iteration": 8,
+    "d": 3
+   },
+   {
+    "iteration": 8,
+    "d": 3
+   },
+   {
+    "iteration": 8,
+    "d": 2
+   },
+   {
+    "iteration": 9,
+    "d": 4
+   },
+   {
+    "iteration": 9,
+    "d": 2
+   },
+   {
+    "iteration": 9,
+    "d": 3
+   },
+   {
+    "iteration": 9,
+    "d": 4
+   },
+   {
+    "iteration": 9,
+    "d": 3
+   },
+   {
+    "iteration": 10,
+    "d": 3
+   },
+   {
+    "iteration": 10,
+    "d": 5
+   },
+   {
+    "iteration": 10,
+    "d": 4
+   },
+   {
+    "iteration": 10,
+    "d": 3
+   },
+   {
+    "iteration": 10,
+    "d": 4
+   },
+   {
+    "iteration": 11,
+    "d": 4
+   },
+   {
+    "iteration": 11,
+    "d": 4
+   },
+   {
+    "iteration": 11,
+    "d": 2
+   },
+   {
+    "iteration": 11,
+    "d": 2
+   },
+   {
+    "iteration": 11,
+    "d": 2
+   },
+   {
+    "iteration": 12,
+    "d": 3
+   },
+   {
+    "iteration": 12,
+    "d": 5
+   },
+   {
+    "iteration": 12,
+    "d": 2
+   },
+   {
+    "iteration": 12,
+    "d": 2
+   }
+  ]
+ },
+ "mut_freq_joint": [
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0133,
+  0.0133,
+  0.0,
+  0.0,
+  0.0133,
+  0.08,
+  0.0533,
+  0.1733,
+  0.0667,
+  0.0,
+  0.0,
+  0.0,
+  0.0133,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0133,
+  0.0,
+  0.0267,
+  0.0,
+  0.0133,
+  0.0,
+  0.0133,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0133,
+  0.0667,
+  0.0,
+  0.7467,
+  0.04,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0133,
+  0.0,
+  0.0,
+  0.0,
+  0.9067,
+  0.1067,
+  0.04,
+  0.0,
+  0.0,
+  0.0533,
+  0.0533,
+  0.0133,
+  0.1067,
+  0.0,
+  0.4933,
+  0.7067,
+  0.0133,
+  0.0,
+  0.0,
+  0.0267,
+  0.0,
+  0.0133,
+  0.0,
+  0.0,
+  0.04,
+  0.0,
+  0.0133,
+  0.0667,
+  0.0
+ ],
+ "contact_trka_r15": [
+  0,
+  0,
+  0,
+  0,
+  1,
+  1,
+  1,
+  1,
+  0,
+  1,
+  1,
+  1,
+  1,
+  1,
+  0,
+  1,
+  0,
+  1,
+  0,
+  1,
+  1,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  1,
+  1,
+  1,
+  0,
+  1,
+  1,
+  0,
+  0,
+  0,
+  1,
+  0,
+  1,
+  0,
+  1,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "contact_trkc_r0": [
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  1,
+  1,
+  1,
+  0,
+  1,
+  0,
+  1,
+  0,
+  1,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  1,
+  0,
+  1,
+  1,
+  1,
+  1,
+  0,
+  0,
+  0,
+  1,
+  1,
+  1,
+  0,
+  1,
+  0,
+  1,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "lineage_mutations": [
+  {
+   "pos1": 14,
+   "from": "H",
+   "to": "Y",
+   "contacts_trka": 1,
+   "contacts_trkc": 1
+  },
+  {
+   "pos1": 30,
+   "from": "W",
+   "to": "K",
+   "contacts_trka": 0,
+   "contacts_trkc": 0
+  },
+  {
+   "pos1": 46,
+   "from": "V",
+   "to": "M",
+   "contacts_trka": 0,
+   "contacts_trkc": 0
+  },
+  {
+   "pos1": 56,
+   "from": "C",
+   "to": "W",
+   "contacts_trka": 1,
+   "contacts_trkc": 1
+  },
+  {
+   "pos1": 64,
+   "from": "K",
+   "to": "P",
+   "contacts_trka": 0,
+   "contacts_trkc": 1
+  },
+  {
+   "pos1": 66,
+   "from": "T",
+   "to": "E",
+   "contacts_trka": 0,
+   "contacts_trkc": 0
+  },
+  {
+   "pos1": 67,
+   "from": "P",
+   "to": "W",
+   "contacts_trka": 0,
+   "contacts_trkc": 0
+  },
+  {
+   "pos1": 76,
+   "from": "K",
+   "to": "M",
+   "contacts_trka": 0,
+   "contacts_trkc": 0
+  }
+ ]
+}

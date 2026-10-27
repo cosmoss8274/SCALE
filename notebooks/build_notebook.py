@@ -34,6 +34,113 @@ HERE = Path(__file__).resolve().parent
 REPO_URL = "https://github.com/cosmoss8274/SCALE"
 COLAB_NOTEBOOK = "notebooks/SCALE_demo_colab.ipynb"
 
+COLAB_SETUP = r'''
+#@title Install SCALE and Boltz-2 { display-mode: "form" }
+#@markdown Repository to clone. Change this only to use your own fork.
+REPO_URL = "__REPO_URL__"  #@param {type:"string"}
+
+import importlib
+from importlib import metadata
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
+
+started = time.perf_counter()
+ROOT = Path("/content/SCALE")
+RUN = Path("/content/scale_run")
+BOLTZ_ENV = Path("/content/.scale-boltz2-py312")
+BOLTZ_VERSION = "2.2.1"
+
+if not ROOT.exists():
+    print("Cloning SCALE ...", flush=True)
+    subprocess.run(["git", "clone", "-q", REPO_URL, str(ROOT)], check=True)
+elif not (ROOT / ".git").is_dir():
+    raise RuntimeError(f"{ROOT} exists but is not a Git checkout. Choose a different directory.")
+
+CODE = ROOT / "code" if (ROOT / "code").exists() else ROOT
+if str(CODE) not in sys.path:
+    sys.path.insert(0, str(CODE))
+DATA = CODE / "data"
+RUN.mkdir(parents=True, exist_ok=True)
+
+# The notebook keeps Colab's CUDA-matched torch. Boltz-2 has a separate Python 3.12
+# environment because its published packages do not support Python 3.13.
+# Always check dependencies: an existing checkout does not mean setup succeeded.
+print("Checking notebook dependencies ...", flush=True)
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "uv", "fair-esm",
+     "py3Dmol", "scikit-learn", "biopython", "PyYAML"],
+    check=True,
+)
+uv = [sys.executable, "-m", "uv"]
+boltz_python = BOLTZ_ENV / "bin" / "python"
+boltz_executable = BOLTZ_ENV / "bin" / "boltz"
+if not boltz_python.exists():
+    print("Creating the Boltz-2 Python 3.12 environment ...", flush=True)
+    subprocess.run(uv + ["venv", "--python", "3.12", str(BOLTZ_ENV)], check=True)
+
+environment_python = json.loads(subprocess.check_output(
+    [str(boltz_python), "-c",
+     "import json,sys; print(json.dumps(list(sys.version_info[:3])))"],
+    text=True,
+))
+if environment_python[:2] != [3, 12]:
+    raise RuntimeError(f"Expected Python 3.12 in {BOLTZ_ENV}; found {environment_python}.")
+
+print(f"Checking Boltz-{BOLTZ_VERSION} dependencies ...", flush=True)
+subprocess.run(
+    uv + ["pip", "install", "--python", str(boltz_python), f"boltz=={BOLTZ_VERSION}"],
+    check=True,
+)
+subprocess.run(uv + ["pip", "check", "--python", str(boltz_python)], check=True)
+subprocess.run([str(boltz_executable), "--help"], stdout=subprocess.DEVNULL, check=True)
+backend_gpu = json.loads(subprocess.check_output(
+    [str(boltz_python), "-c",
+     "import json,torch; "
+     "assert torch.cuda.is_available(), 'CUDA is unavailable in the Boltz environment'; "
+     "torch.zeros(1, device='cuda').cpu(); "
+     "print(json.dumps({'name': torch.cuda.get_device_name(0), 'cuda': torch.version.cuda}))"],
+    text=True,
+))
+
+# Make the isolated CLI available to the existing adapter; no predictor is run here.
+env_bin = str(BOLTZ_ENV / "bin")
+path_parts = os.environ.get("PATH", "").split(os.pathsep)
+os.environ["PATH"] = os.pathsep.join([env_bin] + [p for p in path_parts if p != env_bin])
+for module in ("numpy", "pandas", "scipy", "sklearn", "esm", "Bio", "yaml", "py3Dmol"):
+    importlib.import_module(module)
+
+backend_versions = json.loads(subprocess.check_output(
+    [str(boltz_python), "-c",
+     "import json; from importlib.metadata import version; "
+     "print(json.dumps({p: version(p) for p in ('boltz','torch','numpy')}))"],
+    text=True,
+))
+if backend_versions["boltz"] != BOLTZ_VERSION:
+    raise RuntimeError(f"Expected Boltz {BOLTZ_VERSION}; found {backend_versions['boltz']}.")
+
+environment = {
+    "kernel_python": sys.version.split()[0],
+    "kernel_torch": metadata.version("torch"),
+    "backend_python": ".".join(map(str, environment_python)),
+    "backend_packages": backend_versions,
+    "backend_gpu": backend_gpu,
+    "backend_executable": str(boltz_executable),
+    "code_commit": subprocess.check_output(
+        ["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip(),
+    "setup_seconds": round(time.perf_counter() - started, 1),
+}
+(RUN / "environment.json").write_text(json.dumps(environment, indent=2) + "\n")
+print("Setup checks passed. No prediction has been run.")
+print(json.dumps(environment, indent=2))
+print("Code:", CODE)
+print("Results:", RUN)
+'''
+
+
 md, code = nbf.v4.new_markdown_cell, nbf.v4.new_code_cell
 
 
@@ -104,44 +211,7 @@ def setup_cells(colab: bool):
     cells = [md("## 0 Setup")]
 
     if colab:
-        cells.append(form(r'''#@title 🛠️ Install SCALE and Boltz-2 (~5 min, mostly downloads) { display-mode: "form" }
-%%time
-#@markdown Repository to clone. Change it if you are running your own fork.
-REPO_URL = "''' + REPO_URL + r'''"  #@param {type:"string"}
-
-# Deliberately NOT installed, and why:
-#   AlphaFold 3  - the weights need a signed licence from DeepMind and are not
-#                  redistributable, so no notebook can fetch them. Boltz-2 is used here;
-#                  run AF3 on a cluster you control. Only get_oracle(...) changes.
-#   MSA tools    - jackhmmer/hhblits need sequence databases of several hundred GB.
-#                  Boltz can query a remote MSA server instead; see the target cell.
-#   torch        - Colab ships a build matched to its own driver. Reinstalling it breaks
-#                  CUDA, so boltz is installed without touching it.
-import os, subprocess, sys, time
-from pathlib import Path
-
-ROOT = Path("/content/SCALE")
-
-# Guarded so that re-running after a disconnect is cheap, and still repairs sys.path.
-if not ROOT.exists():
-    print("cloning SCALE ...", flush=True)
-    subprocess.run(["git", "clone", "-q", REPO_URL, str(ROOT)], check=True)
-
-    print("installing boltz and friends (this is the slow part) ...", flush=True)
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                    "boltz", "fair-esm", "py3Dmol", "scikit-learn", "biopython"],
-                   check=True)
-    print("done", flush=True)
-else:
-    print("already set up at", ROOT)
-
-CODE = ROOT / "code" if (ROOT / "code").exists() else ROOT
-if str(CODE) not in sys.path:
-    sys.path.insert(0, str(CODE))
-DATA = CODE / "data"
-RUN = Path("/content/scale_run"); RUN.mkdir(parents=True, exist_ok=True)
-print("code:", CODE)
-print("run :", RUN)'''))
+        cells.append(form(COLAB_SETUP.replace("__REPO_URL__", REPO_URL).strip()))
 
         cells.append(form(r'''#@title 🖥️ Check the GPU { display-mode: "form" }
 #@markdown Boltz-2 needs a CUDA GPU. This cell **stops the notebook** if there is not one,

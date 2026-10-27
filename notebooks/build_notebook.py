@@ -190,16 +190,23 @@ BLUE, GREY, AMBER = "#1F5FBF", "#9aa0a6", "#E08A1E"
 
 #@markdown Every unit below is one structure prediction, so these set the GPU budget.
 #@markdown On a T4 a 100-aa receptor with an 80-aa binder takes roughly 1–2 minutes each.
-N_SEED       = 16   #@param {type:"integer"}
-N_ROUNDS     = 3    #@param {type:"integer"}
+#@markdown
+#@markdown `N_SEED` is the one to think about. Seeds are spent measuring designs the
+#@markdown generator already made, and the best of them is where the loop starts, so a
+#@markdown large sample starts the run near the pool's ceiling and leaves the loop
+#@markdown nothing visible to do. Ten is enough to train on and leaves roughly twice the
+#@markdown headroom of sixteen.
+N_SEED       = 10   #@param {type:"integer"}
+N_ROUNDS     = 5    #@param {type:"integer"}
 N_PER_ROUND  = 5    #@param {type:"integer"}
 #@markdown Mutants ranked by the surrogate each round. Costs no oracle calls, so this can
-#@markdown be large.
-N_CANDIDATES = 400  #@param {type:"integer"}
+#@markdown be large; the sampler proposes roughly 500 per round.
+N_CANDIDATES = 600  #@param {type:"integer"}
 
 _total = N_SEED + N_ROUNDS * N_PER_ROUND
 print("%d structure predictions in total" % _total)
-print("at 1-2 min each that is roughly %d-%d minutes of GPU time" % (_total, 2 * _total))'''
+print("at 1-2 min each that is roughly %d-%d minutes of GPU time" % (_total, 2 * _total))
+print("checkpointed after every prediction, so a disconnect costs at most one")'''
     cells.append(form(budget))
     return cells
 
@@ -400,19 +407,36 @@ def save_history():
     HISTORY_PATH.write_text(json.dumps(history, indent=1))
 
 
-if any(h["round"] == 0 for h in history):
-    measured = [h for h in history if h["round"] == 0]
-    print("resuming: round 0 already has %d designs" % len(measured))
-else:
-    t0 = time.time()
-    measured = evaluator.evaluate(seed_designs)
-    history += [dict(round=0, **m) for m in measured]
-    save_history()
-    mins = (time.time() - t0) / 60
-    print("round 0: %d/%d succeeded in %.1f min (%.1f min each)"
-          % (len(measured), len(seed_designs), mins, mins / max(len(measured), 1)))
-    if evaluator.failures:
-        print("failed:", [f["sequence_id"] for f in evaluator.failures])
+def measure(sequences, rnd):
+    """Predict each sequence, checkpointing after every one.
+
+    Per design rather than per round: a round is 15-30 minutes of GPU time, and Colab
+    disconnects. Saving only at the end of a round throws away everything already paid
+    for. Sequences already in the history are skipped, so re-running this cell after a
+    disconnect costs nothing for the work that survived.
+    """
+    done = {h["sequence"] for h in history}
+    todo = [s for s in sequences if s not in done]
+    if todo and len(todo) < len(sequences):
+        print("resuming: %d of %d already measured" % (len(sequences) - len(todo),
+                                                       len(sequences)))
+    for n, seq in enumerate(todo, 1):
+        t0 = time.time()
+        for record in evaluator.evaluate([seq], iteration=rnd):
+            history.append(dict(round=rnd, **record))
+            save_history()
+            print("  [%d/%d] %s  %.1f min" % (n, len(todo), describe_metrics(record),
+                                              (time.time() - t0) / 60), flush=True)
+    return [h for h in history if h["round"] == rnd]
+
+
+t0 = time.time()
+measured = measure(seed_designs, 0)
+mins = (time.time() - t0) / 60
+print("round 0: %d of %d designs measured, %.1f min"
+      % (len(measured), len(seed_designs), mins))
+if evaluator.failures:
+    print("failed:", [f["sequence_id"] for f in evaluator.failures])
 
 if not measured:
     raise RuntimeError(
@@ -447,9 +471,8 @@ surrogate = MultiHeadSurrogate(
 )
 sampler = MultiMetricGuidedSampler(top_n_for_sampling=5)
 
-done = {h["round"] for h in history}
 for rnd in range(1, N_ROUNDS + 1):
-    if rnd in done:
+    if any(h["round"] == rnd for h in history):
         print("round %d: already done, skipping" % rnd)
         continue
     t0 = time.time()
@@ -458,10 +481,13 @@ for rnd in range(1, N_ROUNDS + 1):
     seqs = [h["sequence"] for h in history]
     surrogate.train(seqs, {"i_ptm": [h["i_ptm"] for h in history]})
 
-    # 2 propose mutants of the current best
+    # 2 propose mutants of the current best, guided by where their structures are worst.
+    #    residue_metrics is per binder residue, supplied by the oracle; a design without
+    #    it contributes None and gets random mutations instead of being dropped.
     best = sorted(history, key=objective, reverse=True)[:5]
     candidates = sampler.generate_candidates(
-        top_sequences=[h["sequence"] for h in best], top_residue_metrics=[],
+        top_sequences=[h["sequence"] for h in best],
+        top_residue_metrics=[h.get("residue_metrics") or None for h in best],
         current_iteration=rnd, max_iterations=N_ROUNDS,
     )
     known = set(seqs)
@@ -472,15 +498,14 @@ for rnd in range(1, N_ROUNDS + 1):
 
     # 3 rank with the surrogate, 4 measure only the top few
     proposals, predicted = surrogate.top_n_selection(candidates, n=N_PER_ROUND)
-    results = evaluator.evaluate(proposals)
-    history += [dict(round=rnd, **m) for m in results]
-    save_history()
+    results = measure(proposals, rnd)
 
     got = [objective(m) for m in results]
-    print("round %d | %4d ranked | measured %d in %.1f min | surrogate score %.3f-%.3f "
-          "| best this round %.3f (run best %.3f)"
-          % (rnd, len(candidates), len(results), (time.time() - t0) / 60,
-             predicted.min(), predicted.max(),
+    guided = sum(1 for h in best if h.get("residue_metrics"))
+    print("round %d | %4d ranked (%d of %d parents structure-guided) | measured %d in "
+          "%.1f min | surrogate %.3f-%.3f | best this round %.3f (run best %.3f)"
+          % (rnd, len(candidates), guided, len(best), len(results),
+             (time.time() - t0) / 60, predicted.min(), predicted.max(),
              max(got) if got else float("nan"),
              max(objective(h) for h in history)))
 

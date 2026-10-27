@@ -35,7 +35,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from ..af3_interface import StructureEvaluator
-from .metrics import normalise
+from .metrics import RESIDUE_METRICS, normalise, validate_residue_metrics
 from .registry import register_oracle
 
 RECEPTOR_CHAIN, BINDER_CHAIN = "0", "1"
@@ -144,8 +144,8 @@ class Boltz2Oracle(StructureEvaluator):
 
     # -- output -----------------------------------------------------------------
     @staticmethod
-    def _min_interface_pae(pae_npz: Path, n_receptor: int) -> float:
-        """Smallest cross-chain PAE, the analogue of AF3's ``chain_pair_pae_min``."""
+    def _load_pae(pae_npz: Path, n_receptor: int) -> np.ndarray:
+        """The full token-by-token PAE matrix, checked against the receptor length."""
         with np.load(pae_npz) as handle:
             pae = handle[handle.files[0]]
         pae = np.asarray(pae, dtype=float)
@@ -154,9 +154,59 @@ class Boltz2Oracle(StructureEvaluator):
         if pae.shape[0] <= n_receptor:
             raise ValueError("PAE matrix %s smaller than the receptor (%d)"
                              % (pae.shape, n_receptor))
+        return pae
+
+    @staticmethod
+    def _min_interface_pae(pae: np.ndarray, n_receptor: int) -> float:
+        """Smallest cross-chain PAE, the analogue of AF3's ``chain_pair_pae_min``."""
         cross = np.concatenate([pae[:n_receptor, n_receptor:].ravel(),
                                 pae[n_receptor:, :n_receptor].ravel()])
         return float(cross.min())
+
+    @staticmethod
+    def _residue_pae(pae: np.ndarray, n_receptor: int) -> Dict[str, np.ndarray]:
+        """Per-binder-residue interface and packing PAE, in Angstrom.
+
+        PAE is not symmetric: ``pae[i, j]`` is the error in j's position when the frame is
+        aligned on i, so a binder residue has two interface values. They correlate closely
+        (0.92 on a measured complex) but not exactly, and neither direction alone is the
+        quantity of interest -- how badly placed this residue is relative to the receptor
+        -- so both are averaged, as AF3's ``chain_pair_pae_min`` also considers both.
+        """
+        to_receptor = pae[n_receptor:, :n_receptor].mean(axis=1)
+        from_receptor = pae[:n_receptor, n_receptor:].mean(axis=0)
+        return {
+            "pae_inter": (to_receptor + from_receptor) / 2.0,
+            "pae_intra": pae[n_receptor:, n_receptor:].mean(axis=1),
+        }
+
+    @staticmethod
+    def _residue_plddt(plddt_npz: Path, n_receptor: int) -> np.ndarray:
+        """Per-binder-residue pLDDT. Boltz writes 0-1, which is the contract's scale."""
+        with np.load(plddt_npz) as handle:
+            plddt = np.asarray(handle[handle.files[0]], dtype=float)
+        if plddt.ndim == 2:
+            plddt = plddt[0]
+        return plddt[n_receptor:]
+
+    def _collect_residue_metrics(self, pred_dir: Path, pae: Optional[np.ndarray],
+                                 n_receptor: int) -> Dict[str, List[float]]:
+        """Per-residue arrays for the guided sampler, or ``{}`` when unavailable.
+
+        Optional by contract: a missing file means the sampler mutates uniformly rather
+        than the run failing. Lists rather than arrays, because these travel through the
+        notebook's JSON checkpoint.
+        """
+        residue: Dict[str, np.ndarray] = {}
+        if pae is not None:
+            residue.update(self._residue_pae(pae, n_receptor))
+        plddt_files = sorted(pred_dir.glob("plddt_*_model_0.npz"))
+        if plddt_files:
+            residue["plddt"] = self._residue_plddt(plddt_files[0], n_receptor)
+        if not residue:
+            return {}
+        validate_residue_metrics(residue, where="Boltz2Oracle")
+        return {k: [float(v) for v in a] for k, a in residue.items()}
 
     def _collect(self, out_dir: Path, name: str) -> Dict:
         pred_dir = out_dir / "predictions" / name
@@ -165,11 +215,14 @@ class Boltz2Oracle(StructureEvaluator):
             raise FileNotFoundError("no confidence JSON under %s" % pred_dir)
         conf = json.loads(conf_files[0].read_text())
 
+        n_receptor = len(self.target_sequence)
         pae_files = sorted(pred_dir.glob("pae_*_model_0.npz"))
         if pae_files:
-            min_pae = self._min_interface_pae(pae_files[0], len(self.target_sequence))
+            pae = self._load_pae(pae_files[0], n_receptor)
+            min_pae = self._min_interface_pae(pae, n_receptor)
         else:
-            min_pae = float("nan")   # --write_pae was not passed; do not substitute
+            pae = None
+            min_pae = float("nan")   # --write_full_pae was not passed; do not substitute
 
         structures = sorted(pred_dir.glob("*_model_0.cif"))
         pair = conf.get("pair_chains_iptm", {})
@@ -185,6 +238,7 @@ class Boltz2Oracle(StructureEvaluator):
                 "complex_ptm": float(conf.get("ptm", float("nan"))),
                 "complex_plddt": float(conf.get("complex_plddt", float("nan"))),
                 "confidence_score": float(conf.get("confidence_score", float("nan"))),
+                RESIDUE_METRICS: self._collect_residue_metrics(pred_dir, pae, n_receptor),
             },
             oracle="boltz2",
             oracle_version=self.oracle_version,

@@ -7,6 +7,7 @@ round, because losing one design should not lose the round's other four.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -14,6 +15,20 @@ from typing import Dict, List, Optional
 from .metrics import MetricContractError, validate
 
 logger = logging.getLogger(__name__)
+
+
+def sequence_id(sequence: str, iteration: Optional[int] = None) -> str:
+    """A name for one prediction, derived from the sequence rather than its position.
+
+    Counting calls instead would be enough within a single process, but these names become
+    directory and file names that outlive it. A resumed run skips the rounds it has already
+    done, so a counter starting from zero in the new process hands round 3 the names round 0
+    used -- pointing the oracle at a populated output directory and overwriting the earlier
+    structures. Hashing the sequence makes a name mean the same design in every session, so
+    resuming is idempotent instead of destructive.
+    """
+    digest = hashlib.sha256(sequence.encode()).hexdigest()[:12]
+    return digest if iteration is None else "r%02d_%s" % (iteration, digest)
 
 
 class OracleEvaluator:
@@ -26,11 +41,18 @@ class OracleEvaluator:
         self.failures: List[Dict] = []
         self.current_iteration = 0
 
-    def evaluate(self, sequences: List[str]) -> List[Dict]:
-        self.current_iteration += 1
+    def evaluate(self, sequences: List[str], iteration: Optional[int] = None) -> List[Dict]:
+        """Predict every sequence, skipping the ones that fail.
+
+        ``iteration`` labels the round in the returned records and in each prediction's
+        name. Pass the real round number when resuming a run; it defaults to counting
+        calls, which is correct only for a run that starts from nothing.
+        """
+        self.current_iteration = (self.current_iteration + 1 if iteration is None
+                                  else iteration)
         results: List[Dict] = []
-        for i, seq in enumerate(sequences):
-            seq_id = "iter%03d_seq%03d" % (self.current_iteration, i)
+        for seq in sequences:
+            seq_id = sequence_id(seq, self.current_iteration)
             last = None
             for attempt in range(self.retries + 1):
                 try:

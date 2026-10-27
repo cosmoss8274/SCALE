@@ -27,6 +27,26 @@ mistake the data should be able to catch.
 
 Missing is NaN, never a stand-in. A substituted number is indistinguishable from a
 measured one once it reaches a CSV.
+
+Per-residue metrics
+-------------------
+
+An adapter may also return ``residue_metrics``: one array per binder residue, used by the
+sampler to decide *where* to mutate rather than mutating uniformly at random. It is
+optional -- a backend that cannot supply it returns nothing and the sampler falls back to
+random positions -- but the names and scales below are fixed, because the sampler combines
+them into one score and cannot ask which predictor they came from.
+
+    ================  ==================================================================
+    ``plddt``         per-residue confidence, **0-1, higher is better**
+    ``pae_inter``     mean PAE in Angstrom to the receptor, higher is worse
+    ``pae_intra``     mean PAE in Angstrom within the binder, higher is worse
+    ================  ==================================================================
+
+The 0-1 pLDDT convention is the adapter's to enforce. Boltz-2 writes 0-1 natively and
+AlphaFold 3 writes 0-100; normalising at the adapter -- not in the consumer -- is the same
+rule the scalar metrics follow, and it is the reason a scale error cannot reach the sampler
+as a silently near-constant term.
 """
 from __future__ import annotations
 
@@ -41,6 +61,11 @@ PROVENANCE = ("oracle", "oracle_version")
 
 #: Optional, by convention: the path to the predicted complex, or None.
 STRUCTURE = "structure_file"
+
+#: Optional: per-binder-residue arrays for guided sampling. See the module docstring for
+#: the scale of each; ``RESIDUE_METRICS`` is the key they live under.
+RESIDUE_METRICS = "residue_metrics"
+RESIDUE_KEYS = ("plddt", "pae_inter", "pae_intra")
 
 
 class MetricContractError(ValueError):
@@ -83,6 +108,29 @@ def validate(metrics: Dict, *, where: str = "oracle") -> Dict:
             raise MetricContractError(
                 "%s returned %r for %s, which is not a number" % (where, metrics[key], key))
     return metrics
+
+
+def validate_residue_metrics(residue: Dict, *, where: str = "oracle",
+                             expect_length: Optional[int] = None) -> Dict:
+    """Raise unless per-residue arrays are the right length and on the documented scale.
+
+    The pLDDT check is the point of this function. A predictor writing 0-100 into a
+    consumer expecting 0-1 does not fail -- it yields a near-constant term that silently
+    stops contributing, which is exactly how the guided sampler came to be unguided. A
+    loud error at the adapter boundary is cheap; a term that quietly does nothing is not.
+    """
+    for key, array in residue.items():
+        values = [float(v) for v in array]
+        if expect_length is not None and len(values) != expect_length:
+            raise MetricContractError(
+                "%s returned %d values for residue metric %r but the binder is %d residues"
+                % (where, len(values), key, expect_length))
+        finite = [v for v in values if not math.isnan(v)]
+        if key == "plddt" and finite and max(finite) > 1.0:
+            raise MetricContractError(
+                "%s returned pLDDT up to %.1f; the contract is 0-1, so divide by 100 in the "
+                "adapter. See binderopt/oracles/metrics.py." % (where, max(finite)))
+    return residue
 
 
 def oracles_present(records: Iterable[Dict]) -> List[str]:

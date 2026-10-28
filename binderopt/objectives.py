@@ -1,70 +1,121 @@
-"""What the loop is trying to maximise.
+"""Scalar objectives and weighted metric scores; larger values are preferred."""
 
-An objective is any callable ``f(metrics: dict) -> float`` that the loop maximises, where
-``metrics`` is what the oracle returned for one design. Three are provided; anything else is
-a plain function:
-
-    objective = maximise("i_ptm")
-    objective = minimise("min_pae_interaction")
-    objective = selectivity("TRKA", ["TRKB", "TRKC"], penalty=2.5)
-
-    def objective(m):                      # or write your own
-        return m["i_ptm"] - 0.1 * m["min_pae_interaction"]
-
-Keeping the objective outside the surrogate matters: the surrogate predicts *metrics*, and
-the objective combines them. Changing what you are optimising for therefore does not
-invalidate a trained surrogate, and two runs with different objectives remain comparable on
-the underlying metrics.
-"""
 from __future__ import annotations
 
-from typing import Callable, Dict, Iterable, Sequence
+import math
+from typing import Callable, Dict, Sequence
+import numpy as np
 
 Objective = Callable[[Dict], float]
 
 
+def _value(metrics, key):
+    value = float(metrics[key])
+    if not math.isfinite(value):
+        raise ValueError(f"Objective requires a finite {key!r} value")
+    return value
+
+
 def maximise(metric: str) -> Objective:
-    """Maximise one metric, e.g. interface pTM."""
-    def f(metrics: Dict) -> float:
-        return float(metrics[metric])
-    f.__doc__ = "maximise %s" % metric
-    f.description = "maximise %s" % metric
+    """Maximise a finite scalar metric."""
+
+    def f(metrics):
+        return _value(metrics, metric)
+
+    f.description = f"maximise {metric}"
     return f
 
 
 def minimise(metric: str) -> Objective:
-    """Minimise one metric, e.g. interface PAE. Returned as a negated value to maximise."""
-    def f(metrics: Dict) -> float:
-        return -float(metrics[metric])
-    f.description = "minimise %s" % metric
+    """Minimise a finite scalar metric by maximising its negative."""
+
+    def f(metrics):
+        return -_value(metrics, metric)
+
+    f.description = f"minimise {metric}"
     return f
+
+
+def _weights(weights):
+    if not weights or any(not math.isfinite(float(w)) for w in weights.values()):
+        raise ValueError("Weights must be a nonempty mapping of finite numbers")
+    result = {key: float(w) for key, w in weights.items() if w != 0}
+    if not result:
+        raise ValueError("At least one metric weight must be nonzero")
+    return result
 
 
 def weighted(weights: Dict[str, float]) -> Objective:
-    """Weighted sum of metrics; use negative weights for quantities to be reduced."""
-    def f(metrics: Dict) -> float:
-        return float(sum(w * metrics[k] for k, w in weights.items()))
-    f.description = "weighted sum " + ", ".join("%+g*%s" % (w, k) for k, w in weights.items())
+    """Weighted sum; assign negative weights to quantities to minimise."""
+    weights = _weights(weights)
+
+    def f(metrics):
+        return float(sum(w * _value(metrics, key) for key, w in weights.items()))
+
+    f.description = "weighted sum " + ", ".join(
+        f"{w:+g}*{key}" for key, w in weights.items()
+    )
     return f
 
 
-def selectivity(on_target: str, off_targets: Sequence[str], penalty: float = 2.5,
-                metric: str = "i_ptm") -> Objective:
-    """On-target metric minus ``penalty`` times the WORST off-target metric.
+def weighted_scores(metrics, weights):
+    """Normalised weighted scores for aligned metric columns.
 
-    The maximum over off-targets, rather than their sum or mean, is deliberate: with a sum a
-    design can score well by shedding one off-target while keeping affinity for another. The
-    penalty is linear rather than hinged because a threshold penalty leaves the gradient at
-    zero for most candidates and lets designs just under the threshold through.
-
-    Expects per-receptor metrics, i.e. ``metrics[target][metric]``.
+    Columns absent or entirely unmeasured in the batch are inactive. A missing value within an active
+    column makes that row ineligible for selection (negative infinity).
     """
-    def f(metrics: Dict) -> float:
-        worst = max(float(metrics[t][metric]) for t in off_targets)
-        return float(metrics[on_target][metric]) - penalty * worst
-    f.description = "%s %s - %g * max(%s)" % (on_target, metric, penalty, ", ".join(off_targets))
+    weights = _weights(weights)
+    active = {
+        key: w
+        for key, w in weights.items()
+        if key in metrics and not np.isnan(np.asarray(metrics[key], dtype=float)).all()
+    }
+    if not active:
+        raise ValueError("No weighted metrics are available")
+    arrays = [np.asarray(metrics[key], dtype=float) for key in active]
+    if any(a.ndim != 1 or a.shape != arrays[0].shape for a in arrays):
+        raise ValueError("Metric columns must be aligned one-dimensional arrays")
+    matrix = np.column_stack(arrays)
+    valid = np.isfinite(matrix).all(axis=1)
+    scores = np.full(len(matrix), -np.inf)
+    coefficients = np.asarray(list(active.values()))
+    scores[valid] = matrix[valid] @ coefficients / np.abs(coefficients).sum()
+    if not valid.any():
+        raise ValueError("No row has finite values for all active weighted metrics")
+    return scores
+
+
+def selectivity(
+    on_target: str,
+    off_targets: Sequence[str],
+    penalty: float = 2.5,
+    metric: str = "i_ptm",
+    *,
+    higher_is_better: bool = True,
+) -> Objective:
+    """On-target utility minus a nonnegative penalty on the strongest off-target utility."""
+    off_targets = tuple(off_targets)
+    if (
+        not off_targets
+        or on_target in off_targets
+        or len(set(off_targets)) != len(off_targets)
+    ):
+        raise ValueError("Provide distinct on-target and off-target names")
+    if not math.isfinite(penalty) or penalty < 0:
+        raise ValueError("Off-target penalty must be finite and nonnegative")
+    sign = 1 if higher_is_better else -1
+
+    def f(metrics):
+        on = sign * _value(metrics[on_target], metric)
+        off = max(sign * _value(metrics[target], metric) for target in off_targets)
+        return float(on - penalty * off)
+
+    f.description = f"{on_target} {metric} selectivity (penalty={penalty:g})"
     return f
 
 
 def describe(objective: Objective) -> str:
-    return getattr(objective, "description", getattr(objective, "__name__", "custom objective"))
+    """Human-readable objective label."""
+    return getattr(
+        objective, "description", getattr(objective, "__name__", "custom objective")
+    )

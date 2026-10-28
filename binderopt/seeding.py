@@ -1,58 +1,5 @@
-"""Initial-batch seed-data generation pipeline: RFdiffusion -> ProteinMPNN -> AF3.
+"""Initial-batch seed-data generation pipeline: RFdiffusion -> ProteinMPNN -> AF3."""
 
-Produces an ``initial_csv`` in the benchmark CSV schema consumed by
-``binderopt.optimizer._load_initial_data`` and ``binderopt.targets.ensure_benchmark_csv``,
-so a campaign can start from nothing rather than from a pool someone else made.
-
-The loop itself does not need this module: SCALE is an optimiser placed *after* a
-generator, and any generator will do. This is one convenient generator, not the required
-one.
-
-Pipeline, per target:
-
-1. RFdiffusion backbone generation (subprocess into the RFdiffusion checkout named by
-   ``SCALE_RFDIFFUSION_DIR``, ``cd``'d into, since RFdiffusion's hydra config resolution
-   is relative-path sensitive).
-2. ProteinMPNN sequence design per backbone (subprocess into ``SCALE_PROTEINMPNN_DIR``,
-   mirroring the invocation convention in ``binderopt/mpnn_scorer.py`` -- each tool is run
-   by the interpreter of its own conda environment, given by absolute path, because their
-   dependencies conflict).
-3. AF3 complex evaluation per (backbone, sequence) pair, via the existing
-   ``binderopt.af3_interface.AlphaFold3Interface`` (no new AF3 subprocess
-   code is written here).
-4. Assembly into the benchmark CSV schema:
-   sequence,target_sequence,target,seed,design_json,cif_file,sample_dir,nll,
-   design_dir,af3_output_dir,iptm,ptm,ranking_score,iteration
-
-Resumability: every step checks for pre-existing output on disk before
-re-running (backbone PDBs, ProteinMPNN ``seqs/*.fa`` + ``scores/*.npz``
-files, and AF3 output directories/summary jsons), mirroring the cache-reuse
-pattern already used by ``AlphaFold3Interface._prepare_target_msa``. This
-lets a single seeding job be split/interrupted/resumed across multiple
-sbatch submissions.
-
-Important ProteinMPNN flag correction vs. the old reference script
-(``run_pos_rfd.sh``): that script passes ``--model_type "soluble"``, but
-``protein_mpnn_run.py``'s actual argparse (verified by reading the source
-directly) has no ``--model_type`` flag at all -- the real flag is
-``--use_soluble_model`` (a boolean ``action="store_true"`` flag, not a
-value-taking option). This module uses the correct flag.
-
-Important ProteinMPNN *output-parsing* note: this module runs ProteinMPNN in
-its default sequence-*generation* mode (no ``--score_only``), which is a
-different code path from ``mpnn_scorer.py`` (which uses ``--score_only 1``).
-In generation mode, ``--save_score 1`` writes per-sequence scores to
-``<out_folder>/scores/<pdb_basename>.npz`` with a ``score`` array of shape
-``(num_seq_per_target,)`` -- one entry per sequence, in the same order as
-the sequences appear in ``<out_folder>/seqs/<pdb_basename>.fa`` (verified by
-reading ``protein_mpnn_run.py``'s main sampling loop: ``score_list`` is
-appended to in the same nested temperature/batch loop that writes each
-``>T=...`` fasta record, then dumped via
-``np.savez(score_file, score=np.array(score_list, ...))``). This is *not*
-the ``score_only/<pdb_basename>_fasta_N.npz`` file ``mpnn_scorer.py`` parses
--- that file only exists when ``--score_only 1`` is passed, which we don't
-do here.
-"""
 from __future__ import annotations
 
 import csv
@@ -71,9 +18,20 @@ from .external import tool_path
 logger = logging.getLogger(__name__)
 
 _BENCHMARK_FIELDNAMES = [
-    "sequence", "target_sequence", "target", "seed", "design_json",
-    "cif_file", "sample_dir", "nll", "design_dir", "af3_output_dir",
-    "iptm", "ptm", "ranking_score", "iteration",
+    "sequence",
+    "target_sequence",
+    "target",
+    "seed",
+    "design_json",
+    "cif_file",
+    "sample_dir",
+    "nll",
+    "design_dir",
+    "af3_output_dir",
+    "iptm",
+    "ptm",
+    "ranking_score",
+    "iteration",
 ]
 
 # Matches a ProteinMPNN-generated fasta record header, e.g.:
@@ -100,17 +58,18 @@ class SeedingConfig:
     noise_scale_ca: float = 0.5
     noise_scale_frame: float = 0.5
 
-    # Resolved from the environment when not given explicitly; see binderopt/external.py.
-    # A missing variable raises at construction, naming what to set, rather than handing a
-    # subprocess a path that exists only on the machine this was written on.
     rfdiffusion_dir: str = field(
-        default_factory=lambda: tool_path("SCALE_RFDIFFUSION_DIR"))
+        default_factory=lambda: tool_path("SCALE_RFDIFFUSION_DIR")
+    )
     rfdiffusion_python: str = field(
-        default_factory=lambda: tool_path("SCALE_RFDIFFUSION_PYTHON"))
+        default_factory=lambda: tool_path("SCALE_RFDIFFUSION_PYTHON")
+    )
     mpnn_repo_dir: str = field(
-        default_factory=lambda: tool_path("SCALE_PROTEINMPNN_DIR"))
+        default_factory=lambda: tool_path("SCALE_PROTEINMPNN_DIR")
+    )
     mpnn_python: str = field(
-        default_factory=lambda: tool_path("SCALE_PROTEINMPNN_PYTHON"))
+        default_factory=lambda: tool_path("SCALE_PROTEINMPNN_PYTHON")
+    )
     mpnn_model_name: str = "v_48_020"
 
     @classmethod
@@ -127,11 +86,14 @@ class SeedingConfig:
         return cls(target_name=target_name, **kwargs)
 
 
-def build_rfdiffusion_command(config: SeedingConfig, output_prefix: Path, num_designs: int) -> List[str]:
+def build_rfdiffusion_command(
+    config: SeedingConfig, output_prefix: Path, num_designs: int
+) -> List[str]:
     """Construct the RFdiffusion ``run_inference.py`` command line (no execution)."""
     hotspot_str = ",".join(config.hotspot_residues)
     return [
-        config.rfdiffusion_python, "scripts/run_inference.py",
+        config.rfdiffusion_python,
+        "scripts/run_inference.py",
         f"inference.output_prefix={output_prefix}",
         f"inference.input_pdb={config.target_pdb}",
         f"inference.num_designs={num_designs}",
@@ -144,7 +106,9 @@ def build_rfdiffusion_command(config: SeedingConfig, output_prefix: Path, num_de
 
 
 def build_proteinmpnn_command(
-    config: SeedingConfig, backbone_pdb: Path, out_folder: Path,
+    config: SeedingConfig,
+    backbone_pdb: Path,
+    out_folder: Path,
 ) -> List[str]:
     """Construct the ProteinMPNN ``protein_mpnn_run.py`` command line (no execution).
 
@@ -152,21 +116,33 @@ def build_proteinmpnn_command(
     (not a real argparse option) -- see module docstring.
     """
     return [
-        config.mpnn_python, "protein_mpnn_run.py",
-        "--pdb_path", str(backbone_pdb),
-        "--pdb_path_chains", "A",
-        "--out_folder", str(out_folder),
-        "--num_seq_per_target", str(config.n_sequences_per_backbone),
-        "--sampling_temp", config.sampling_temp,
-        "--batch_size", "1",
+        config.mpnn_python,
+        "protein_mpnn_run.py",
+        "--pdb_path",
+        str(backbone_pdb),
+        "--pdb_path_chains",
+        "A",
+        "--out_folder",
+        str(out_folder),
+        "--num_seq_per_target",
+        str(config.n_sequences_per_backbone),
+        "--sampling_temp",
+        config.sampling_temp,
+        "--batch_size",
+        "1",
         "--use_soluble_model",
-        "--save_score", "1",
-        "--save_probs", "0",
-        "--model_name", config.mpnn_model_name,
+        "--save_score",
+        "1",
+        "--save_probs",
+        "0",
+        "--model_name",
+        config.mpnn_model_name,
     ]
 
 
-def run_rfdiffusion(config: SeedingConfig, work_dir: Path, dry_run: bool = False) -> List[Path]:
+def run_rfdiffusion(
+    config: SeedingConfig, work_dir: Path, dry_run: bool = False
+) -> List[Path]:
     """Generate backbones with RFdiffusion into ``work_dir/backbones``.
 
     Resumable: if ``work_dir/backbones`` already contains
@@ -182,7 +158,9 @@ def run_rfdiffusion(config: SeedingConfig, work_dir: Path, dry_run: bool = False
     if len(existing) >= config.n_backbones:
         logger.info(
             "Found %d existing backbones in %s (>= requested %d); skipping RFdiffusion.",
-            len(existing), backbones_dir, config.n_backbones,
+            len(existing),
+            backbones_dir,
+            config.n_backbones,
         )
         return existing[: config.n_backbones]
 
@@ -191,7 +169,9 @@ def run_rfdiffusion(config: SeedingConfig, work_dir: Path, dry_run: bool = False
     if dry_run:
         return existing
 
-    proc = subprocess.run(cmd, cwd=config.rfdiffusion_dir, capture_output=True, text=True)
+    proc = subprocess.run(
+        cmd, cwd=config.rfdiffusion_dir, capture_output=True, text=True
+    )
     if proc.returncode != 0:
         raise RuntimeError(
             f"RFdiffusion failed (exit {proc.returncode}):\nstdout={proc.stdout[-4000:]}\n"
@@ -232,7 +212,10 @@ def _parse_mpnn_fasta(fasta_path: Path) -> List[str]:
 
 
 def run_proteinmpnn(
-    config: SeedingConfig, backbone_pdb: Path, work_dir: Path, dry_run: bool = False,
+    config: SeedingConfig,
+    backbone_pdb: Path,
+    work_dir: Path,
+    dry_run: bool = False,
 ) -> Tuple[List[str], List[float]]:
     """Run ProteinMPNN sequence design for one backbone; return (sequences, nll_scores).
 
@@ -254,7 +237,9 @@ def run_proteinmpnn(
             return [], []
 
         out_folder.mkdir(parents=True, exist_ok=True)
-        proc = subprocess.run(cmd, cwd=config.mpnn_repo_dir, capture_output=True, text=True)
+        proc = subprocess.run(
+            cmd, cwd=config.mpnn_repo_dir, capture_output=True, text=True
+        )
         if proc.returncode != 0:
             raise RuntimeError(
                 f"ProteinMPNN failed for {basename} (exit {proc.returncode}):\n"
@@ -274,7 +259,10 @@ def run_proteinmpnn(
         else:
             logger.warning(
                 "ProteinMPNN score count (%d) != sequence count (%d) for %s; "
-                "leaving nll as NaN.", len(scores), len(sequences), basename,
+                "leaving nll as NaN.",
+                len(scores),
+                len(sequences),
+                basename,
             )
     else:
         logger.warning("Expected ProteinMPNN score file not found: %s", score_path)
@@ -316,27 +304,35 @@ class SeedDataGenerator:
     def generate_backbones(self, dry_run: bool = False) -> List[Path]:
         return run_rfdiffusion(self.config, self.work_dir, dry_run=dry_run)
 
-    def design_sequences(self, backbone_pdb: Path, dry_run: bool = False) -> Tuple[List[str], List[float]]:
-        return run_proteinmpnn(self.config, backbone_pdb, self.work_dir, dry_run=dry_run)
+    def design_sequences(
+        self, backbone_pdb: Path, dry_run: bool = False
+    ) -> Tuple[List[str], List[float]]:
+        return run_proteinmpnn(
+            self.config, backbone_pdb, self.work_dir, dry_run=dry_run
+        )
 
     def evaluate_with_af3(
-        self, backbone_name: str, seq_idx: int, sequence: str,
+        self,
+        backbone_name: str,
+        seq_idx: int,
+        sequence: str,
     ) -> Tuple[str, Dict]:
-        """Run (or reuse) AF3 prediction for one (backbone, sequence) pair.
-
-        Resumable: checks for an existing summary_confidences.json under the
-        expected af3_output_dir before invoking AlphaFold3Interface.predict
-        (mirrors the cache-reuse pattern in
-        AlphaFold3Interface._prepare_target_msa).
-        """
+        """Run (or reuse) AF3 prediction for one (backbone, sequence) pair."""
         seq_id = f"{backbone_name}_seq{seq_idx}"
         structure_dir = self.work_dir / "af3_structures"
         dest_dir = structure_dir / seq_id
 
-        existing_summary = list(dest_dir.glob("*_summary_confidences.json")) if dest_dir.exists() else []
+        existing_summary = (
+            list(dest_dir.glob("*_summary_confidences.json"))
+            if dest_dir.exists()
+            else []
+        )
         if existing_summary:
-            logger.info("Found existing AF3 output for %s; skipping prediction.", seq_id)
+            logger.info(
+                "Found existing AF3 output for %s; skipping prediction.", seq_id
+            )
             import json
+
             with open(existing_summary[0]) as f:
                 summary = json.load(f)
             metrics = {
@@ -347,7 +343,10 @@ class SeedDataGenerator:
             return seq_id, metrics
 
         _confidence, metrics = self.af3.predict(
-            sequence, save_structure=True, structure_dir=str(structure_dir), sequence_id=seq_id,
+            sequence,
+            save_structure=True,
+            structure_dir=str(structure_dir),
+            sequence_id=seq_id,
         )
         return seq_id, metrics
 
@@ -357,16 +356,7 @@ class SeedDataGenerator:
         skip_af3: bool = False,
         output_csv: Optional[str] = None,
     ) -> int:
-        """Run the pipeline, writing each completed row immediately to output_csv.
-
-        Resumable: if output_csv already exists, any (backbone, seq_idx) pair
-        whose seq_id appears in an existing row's af3_output_dir column is
-        skipped -- AF3 was already done for it. RFdiffusion/ProteinMPNN steps
-        are also skipped via on-disk file checks as before.
-
-        Returns the total number of rows written this run (not counting rows
-        already in the CSV from a previous run).
-        """
+        """Run the pipeline, writing each completed row immediately to output_csv."""
         # --- load already-completed seq_ids for resume ---
         completed_seq_ids: set = set()
         if output_csv:
@@ -380,7 +370,8 @@ class SeedDataGenerator:
                 if completed_seq_ids:
                     logger.info(
                         "Resume: found %d already-completed AF3 evaluations in %s",
-                        len(completed_seq_ids), output_csv,
+                        len(completed_seq_ids),
+                        output_csv,
                     )
 
         # --- open CSV for incremental append ---
@@ -399,27 +390,33 @@ class SeedDataGenerator:
         def _write_row(row: SeedRow) -> None:
             if csv_writer is None:
                 return
-            csv_writer.writerow({
-                "sequence": row.sequence,
-                "target_sequence": row.target_sequence,
-                "target": row.target,
-                "seed": 0,
-                "design_json": "",
-                "cif_file": "",
-                "sample_dir": row.backbone_pdb,
-                "nll": row.nll,
-                "design_dir": row.backbone_name,
-                "af3_output_dir": row.af3_output_dir,
-                "iptm": row.iptm if row.iptm is not None else "",
-                "ptm": row.ptm if row.ptm is not None else "",
-                "ranking_score": row.ranking_score if row.ranking_score is not None else "",
-                "iteration": 0,
-            })
+            csv_writer.writerow(
+                {
+                    "sequence": row.sequence,
+                    "target_sequence": row.target_sequence,
+                    "target": row.target,
+                    "seed": 0,
+                    "design_json": "",
+                    "cif_file": "",
+                    "sample_dir": row.backbone_pdb,
+                    "nll": row.nll,
+                    "design_dir": row.backbone_name,
+                    "af3_output_dir": row.af3_output_dir,
+                    "iptm": row.iptm if row.iptm is not None else "",
+                    "ptm": row.ptm if row.ptm is not None else "",
+                    "ranking_score": (
+                        row.ranking_score if row.ranking_score is not None else ""
+                    ),
+                    "iteration": 0,
+                }
+            )
             csv_file.flush()  # write immediately, don't buffer
 
         backbones = self.generate_backbones(dry_run=dry_run)
         if dry_run:
-            logger.info("[dry_run] Would generate %d backbones.", self.config.n_backbones)
+            logger.info(
+                "[dry_run] Would generate %d backbones.", self.config.n_backbones
+            )
 
         n_written = 0
         try:
@@ -429,7 +426,8 @@ class SeedDataGenerator:
                 if dry_run:
                     logger.info(
                         "[dry_run] Would design %d sequences for backbone %s.",
-                        self.config.n_sequences_per_backbone, backbone_name,
+                        self.config.n_sequences_per_backbone,
+                        backbone_name,
                     )
                     continue
 
@@ -445,7 +443,9 @@ class SeedDataGenerator:
                             backbone_pdb=str(backbone_pdb),
                             nll=nll,
                             af3_output_dir="",
-                            iptm=None, ptm=None, ranking_score=None,
+                            iptm=None,
+                            ptm=None,
+                            ranking_score=None,
                         )
                         _write_row(row)
                         n_written += 1
@@ -455,7 +455,9 @@ class SeedDataGenerator:
                         logger.info("Resume: skipping already-done %s", seq_id)
                         continue
 
-                    seq_id_out, metrics = self.evaluate_with_af3(backbone_name, seq_idx, sequence)
+                    seq_id_out, metrics = self.evaluate_with_af3(
+                        backbone_name, seq_idx, sequence
+                    )
                     row = SeedRow(
                         sequence=sequence,
                         target_sequence=self.target_sequence,
@@ -470,7 +472,9 @@ class SeedDataGenerator:
                     )
                     _write_row(row)
                     n_written += 1
-                    logger.info("Written %d rows so far (latest: %s)", n_written, seq_id_out)
+                    logger.info(
+                        "Written %d rows so far (latest: %s)", n_written, seq_id_out
+                    )
         finally:
             if csv_file is not None:
                 csv_file.close()
@@ -486,21 +490,25 @@ def write_benchmark_csv(rows: List[SeedRow], output_csv_path: str) -> str:
         writer = csv.DictWriter(f, fieldnames=_BENCHMARK_FIELDNAMES)
         writer.writeheader()
         for row in rows:
-            writer.writerow({
-                "sequence": row.sequence,
-                "target_sequence": row.target_sequence,
-                "target": row.target,
-                "seed": 0,
-                "design_json": "",
-                "cif_file": "",
-                "sample_dir": row.backbone_pdb,
-                "nll": row.nll,
-                "design_dir": row.backbone_name,
-                "af3_output_dir": row.af3_output_dir,
-                "iptm": row.iptm if row.iptm is not None else "",
-                "ptm": row.ptm if row.ptm is not None else "",
-                "ranking_score": row.ranking_score if row.ranking_score is not None else "",
-                "iteration": 0,
-            })
+            writer.writerow(
+                {
+                    "sequence": row.sequence,
+                    "target_sequence": row.target_sequence,
+                    "target": row.target,
+                    "seed": 0,
+                    "design_json": "",
+                    "cif_file": "",
+                    "sample_dir": row.backbone_pdb,
+                    "nll": row.nll,
+                    "design_dir": row.backbone_name,
+                    "af3_output_dir": row.af3_output_dir,
+                    "iptm": row.iptm if row.iptm is not None else "",
+                    "ptm": row.ptm if row.ptm is not None else "",
+                    "ranking_score": (
+                        row.ranking_score if row.ranking_score is not None else ""
+                    ),
+                    "iteration": 0,
+                }
+            )
     logger.info("Wrote %d rows to %s", len(rows), output_path)
     return str(output_path)

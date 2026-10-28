@@ -1,30 +1,5 @@
-"""Where the external tools live.
+"""Environment-based locations for external prediction and design tools."""
 
-SCALE drives four programs it does not ship: AlphaFold 3, RFdiffusion, ProteinMPNN, and the
-Python interpreters of their respective conda environments. Every installation puts them
-somewhere different, so their locations are read from the environment rather than baked in:
-
-====================================  ========================================
-``SCALE_AF3_RUN``                     path to AlphaFold 3's ``run_alphafold.py``
-``SCALE_AF3_DB_DIR``                  AlphaFold 3 sequence databases
-``SCALE_AF3_MODEL_DIR``               AlphaFold 3 model parameters
-``SCALE_RFDIFFUSION_DIR``             RFdiffusion checkout
-``SCALE_RFDIFFUSION_PYTHON``          interpreter of RFdiffusion's env (SE3nv)
-``SCALE_PROTEINMPNN_DIR``             ProteinMPNN checkout
-``SCALE_PROTEINMPNN_PYTHON``          interpreter of ProteinMPNN's env
-====================================  ========================================
-
-Set the ones you need, e.g. in ``~/.bashrc`` or a job script::
-
-    export SCALE_PROTEINMPNN_DIR=/opt/ProteinMPNN
-    export SCALE_PROTEINMPNN_PYTHON=/opt/conda/envs/proteinmpnn/bin/python
-
-Nothing here has a default path. A wrong default is worse than a missing one: it turns a
-misconfiguration into a confusing failure deep inside a subprocess, and on a shared machine
-it can point at someone else's checkout. :func:`tool_path` therefore raises with the name of
-the variable to set, and the loop itself (surrogate, sampler, oracles) needs none of this --
-only the generator and analysis helpers do.
-"""
 from __future__ import annotations
 
 import os
@@ -57,10 +32,14 @@ def tool_path(var: str, *, must_exist: bool = True) -> str:
     value = os.environ.get(var)
     if not value:
         raise ExternalToolNotConfigured(
-            "%s is not set; point it at %s, e.g. export %s=/path/to/it" % (var, what, var))
+            "%s is not set; point it at %s, e.g. export %s=/path/to/it"
+            % (var, what, var)
+        )
     if must_exist and not Path(value).exists():
         raise ExternalToolNotConfigured(
-            "%s is set to %r but that path does not exist (should be %s)" % (var, value, what))
+            "%s is set to %r but that path does not exist (should be %s)"
+            % (var, value, what)
+        )
     return value
 
 
@@ -82,7 +61,7 @@ def is_configured(var: str) -> bool:
 #: ``${SCALE_ASSETS}/benchmark_TRKA_rfdiffusion.csv``; each site sets the variable once.
 CONFIG_ROOTS = {
     "SCALE_ASSETS": "the run assets: benchmark CSVs, AF3 output trees, MSA caches, "
-                    "reference backbones",
+    "reference backbones",
     "SCALE_RESULTS": "the directory holding completed run outputs",
     "SCALE_AF3_DB_DIR": _DESCRIPTIONS["SCALE_AF3_DB_DIR"],
     "SCALE_AF3_MODEL_DIR": _DESCRIPTIONS["SCALE_AF3_MODEL_DIR"],
@@ -96,13 +75,7 @@ class UnresolvedPlaceholder(RuntimeError):
 
 
 def expand_placeholders(value, *, where: str = "config"):
-    """Recursively expand ``${VAR}`` in strings inside dicts, lists and scalars.
-
-    Configs ship with placeholders rather than absolute paths so that the repository
-    carries no one site's directory layout -- neither as a convenience nor as an
-    accidental disclosure of it. An unset variable raises, naming the variable and the
-    file, because a half-expanded path fails later and much less clearly.
-    """
+    """Recursively expand ``${VAR}`` in strings inside dicts, lists and scalars."""
     if isinstance(value, dict):
         return {k: expand_placeholders(v, where=where) for k, v in value.items()}
     if isinstance(value, list):
@@ -110,13 +83,26 @@ def expand_placeholders(value, *, where: str = "config"):
     if not isinstance(value, str):
         return value
 
-    missing = sorted({m.group(1) for m in _PLACEHOLDER.finditer(value)
-                      if not os.environ.get(m.group(1))})
+    missing = sorted(
+        {
+            m.group(1)
+            for m in _PLACEHOLDER.finditer(value)
+            if not os.environ.get(m.group(1))
+        }
+    )
     if missing:
-        lines = ["%s needs %s, which %s not set:"
-                 % (where, ", ".join("${%s}" % v for v in missing),
-                    "is" if len(missing) == 1 else "are")]
-        lines += ["    export %s=...   # %s" % (v, CONFIG_ROOTS.get(v, "see binderopt/external.py"))
-                  for v in missing]
+        lines = [
+            "%s needs %s, which %s not set:"
+            % (
+                where,
+                ", ".join("${%s}" % v for v in missing),
+                "is" if len(missing) == 1 else "are",
+            )
+        ]
+        lines += [
+            "    export %s=...   # %s"
+            % (v, CONFIG_ROOTS.get(v, "see binderopt/external.py"))
+            for v in missing
+        ]
         raise UnresolvedPlaceholder("\n".join(lines))
     return _PLACEHOLDER.sub(lambda m: os.environ[m.group(1)], value)

@@ -1,14 +1,5 @@
-"""AlphaFold3 subprocess interface: MSA preparation + complex prediction.
+"""AlphaFold 3 inference and receptor-MSA preparation."""
 
-Cleaned up from the original script: type hints, logging instead of bare
-prints, pathlib throughout. Behavior is unchanged.
-
-Also defines `StructureEvaluator`, the abstract adapter interface for
-structure/binding-confidence scorers (see that class's docstring). AF3 via
-`AlphaFold3Interface` is currently the only implementation; a future
-BoltzGen or other structure-scoring backend would implement the same
-interface.
-"""
 from __future__ import annotations
 
 import json
@@ -25,6 +16,7 @@ from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+
 def _run_alphafold_script() -> str:
     """Path to AlphaFold 3's run_alphafold.py, from SCALE_AF3_RUN.
 
@@ -34,17 +26,26 @@ def _run_alphafold_script() -> str:
     return tool_path("SCALE_AF3_RUN")
 
 
-class StructureEvaluator(ABC):
-    """Abstract adapter for tools that score a sequence's predicted binding/structure confidence.
+def prediction_files(directory):
+    """Resolve a top-ranked AF3 model and its paired confidence files."""
+    models = sorted(
+        Path(directory).rglob("*_model.cif"),
+        key=lambda path: (len(path.parts), -path.stat().st_mtime_ns, str(path)),
+    )
+    if not models:
+        raise FileNotFoundError(f"No AF3 model found in {directory}")
+    model = models[0]
+    stem = model.name.removesuffix("_model.cif")
+    summary = model.with_name(stem + "_summary_confidences.json")
+    confidence = model.with_name(stem + "_confidences.json")
+    for path in (summary, confidence):
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing AF3 output paired with {model}: {path}")
+    return model, summary, confidence
 
-    This is the extension point for plugging in a structure-prediction
-    backend other than AlphaFold3 (e.g. a future BoltzGen integration).
-    Implementations take a candidate binder sequence and return per-sequence
-    confidence/structure metrics. `AlphaFold3Interface` below is the sole
-    current implementation, via its `predict()` method (see
-    `binderopt.optimizer.AF3Evaluator.evaluate()` for the call site that
-    wraps `predict()` per-sequence and adds derived loss metrics).
-    """
+
+class StructureEvaluator(ABC):
+    """Abstract adapter for tools that score a sequence's predicted binding/structure confidence."""
 
     @abstractmethod
     def predict(self, binder_sequence: str, **kwargs) -> Tuple[float, Dict]:
@@ -65,19 +66,20 @@ class AlphaFold3Interface(StructureEvaluator):
         af3_results_dir: str = "af3_batch_results",
         msa_cache_dir: str = "target_msa_cache",
     ):
-        """
-        Args:
-            db_dir: AF3 database directory.
-            model_dir: AF3 model directory.
-            target_names: list of target names (e.g. ["BHRF1"]).
-            target_sequences: list of target protein sequences, same length as target_names.
-            target_msa_dirs: pre-computed MSA directories; if None, MSAs are computed and cached.
-            af3_results_dir: directory AF3 writes raw per-sequence prediction output to.
-            msa_cache_dir: directory used to cache target-only MSA results across runs.
-        """
+        """Args:
+        db_dir: AF3 database directory.
+        model_dir: AF3 model directory.
+        target_names: list of target names (e.g. ["BHRF1"]).
+        target_sequences: list of target protein sequences, same length as target_names.
+        target_msa_dirs: pre-computed MSA directories; if None, MSAs are computed and cached.
+        af3_results_dir: directory AF3 writes raw per-sequence prediction output to.
+        msa_cache_dir: directory used to cache target-only MSA results across runs."""
         self.db_dir = db_dir
         self.model_dir = model_dir
         self.target_names = list(target_names)
+        if not 1 <= len(self.target_names) <= 25:
+            raise ValueError("AF3 requires one to twenty-five protein target chains")
+        self.binder_chain = chr(ord("A") + len(self.target_names))
         self.target_sequences = list(target_sequences)
         self.msa_cache_dir = Path(msa_cache_dir)
         self.af3_results_dir = Path(af3_results_dir)
@@ -97,6 +99,8 @@ class AlphaFold3Interface(StructureEvaluator):
             ]
         else:
             self.target_msa_dirs = list(target_msa_dirs)
+            if len(self.target_msa_dirs) != len(self.target_names):
+                raise ValueError("Supply one target MSA directory per target sequence")
             logger.info("Using existing target MSAs: %s", self.target_msa_dirs)
 
     def _prepare_target_msa(self, target_name: str, target_sequence: str) -> str:
@@ -104,7 +108,9 @@ class AlphaFold3Interface(StructureEvaluator):
         target_output = self.msa_cache_dir / f"{target_name}_msa"
         target_output.mkdir(exist_ok=True, parents=True)
 
-        existing_data_files = list(target_output.glob(f"*/{target_name}_only_data.json"))
+        existing_data_files = list(
+            target_output.glob(f"*/{target_name}_only_data.json")
+        )
         if existing_data_files:
             logger.info("Found existing MSA for %s", target_name)
             return str(existing_data_files[0].parent)
@@ -121,7 +127,8 @@ class AlphaFold3Interface(StructureEvaluator):
             json.dump(target_json, f, indent=2)
 
         cmd = [
-            "python3", _run_alphafold_script(),
+            "python3",
+            _run_alphafold_script(),
             f"--json_path={target_json_file}",
             f"--db_dir={self.db_dir}",
             f"--model_dir={self.model_dir}",
@@ -134,7 +141,9 @@ class AlphaFold3Interface(StructureEvaluator):
         env["JAX_PLATFORMS"] = "cpu"
 
         logger.info("Running MSA search for %s...", target_name)
-        result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=7200)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, env=env, timeout=7200
+        )
         if result.returncode != 0:
             raise RuntimeError(f"Target MSA failed for {target_name}: {result.stderr}")
 
@@ -156,18 +165,13 @@ class AlphaFold3Interface(StructureEvaluator):
         """Predict a binder:target complex and return (confidence, metrics)."""
         seq_id = sequence_id or f"seq_{len(binder_sequence):03d}"
         combined_json_file = self._create_complex_json(binder_sequence, seq_id)
-        return self._run_inference(combined_json_file, save_structure, structure_dir, seq_id)
+        return self._run_inference(
+            combined_json_file, save_structure, structure_dir, seq_id
+        )
 
     def _create_complex_json(self, binder_sequence: str, seq_id: str) -> str:
-        """Create the AF3 input JSON: target chain(s) with cached MSA + binder chain without MSA.
-
-        Each target gets its own per-target MSA dir/file from ``_prepare_target_msa``
-        (named ``{target_name}_only_data.json``, not a single shared
-        "target_chains_data.json" -- there is no combined multi-target MSA file
-        in this codebase's MSA-prep flow, each target's data pipeline runs
-        separately).
-        """
-        chain_ids = ["A", "B", "C", "D", "E", "F"]
+        """Create the AF3 input JSON: target chain(s) with cached MSA + binder chain without MSA."""
+        chain_ids = [chr(ord("A") + i) for i in range(26)]
         sequences = []
         for i, (name, seq) in enumerate(zip(self.target_names, self.target_sequences)):
             target_msa_dir = Path(self.target_msa_dirs[i])
@@ -182,34 +186,43 @@ class AlphaFold3Interface(StructureEvaluator):
                 target_data = json.load(f)
 
             target_protein = next(
-                (entry["protein"] for entry in target_data["sequences"]
-                 if "protein" in entry and entry["protein"]["sequence"] == seq),
+                (
+                    entry["protein"]
+                    for entry in target_data["sequences"]
+                    if "protein" in entry and entry["protein"]["sequence"] == seq
+                ),
                 None,
             )
             if target_protein is None:
-                raise ValueError(f"Target sequence for {name} not found in MSA file {data_files[0]}")
-            sequences.append({
-                "protein": {
-                    "id": chain_ids[i],
-                    "sequence": seq,
-                    "modifications": [],
-                    "unpairedMsa": target_protein.get("unpairedMsa", ""),
-                    "pairedMsa": target_protein.get("pairedMsa", ""),
-                    "templates": target_protein.get("templates", []),
+                raise ValueError(
+                    f"Target sequence for {name} not found in MSA file {data_files[0]}"
+                )
+            sequences.append(
+                {
+                    "protein": {
+                        "id": chain_ids[i],
+                        "sequence": seq,
+                        "modifications": [],
+                        "unpairedMsa": target_protein.get("unpairedMsa", ""),
+                        "pairedMsa": target_protein.get("pairedMsa", ""),
+                        "templates": target_protein.get("templates", []),
+                    }
                 }
-            })
+            )
 
         binder_chain_id = chain_ids[len(self.target_names)]
-        sequences.append({
-            "protein": {
-                "id": binder_chain_id,
-                "sequence": binder_sequence,
-                "modifications": [],
-                "unpairedMsa": "",
-                "pairedMsa": "",
-                "templates": [],
+        sequences.append(
+            {
+                "protein": {
+                    "id": binder_chain_id,
+                    "sequence": binder_sequence,
+                    "modifications": [],
+                    "unpairedMsa": "",
+                    "pairedMsa": "",
+                    "templates": [],
+                }
             }
-        })
+        )
 
         complex_json = {
             "dialect": "alphafold3",
@@ -239,11 +252,16 @@ class AlphaFold3Interface(StructureEvaluator):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         cmd = [
-            "python3", _run_alphafold_script(),
-            "--json_path", str(combined_json_file),
-            "--model_dir", str(self.model_dir),
-            "--db_dir", str(self.db_dir),
-            "--output_dir", str(output_dir),
+            "python3",
+            _run_alphafold_script(),
+            "--json_path",
+            str(combined_json_file),
+            "--model_dir",
+            str(self.model_dir),
+            "--db_dir",
+            str(self.db_dir),
+            "--output_dir",
+            str(output_dir),
             "--norun_data_pipeline",
             "--run_inference",
         ]
@@ -251,42 +269,21 @@ class AlphaFold3Interface(StructureEvaluator):
         if result.returncode != 0:
             raise RuntimeError(f"AF3 prediction failed for {seq_id}: {result.stderr}")
 
-        summary_files = list(output_dir.rglob("*_summary_confidences.json"))
-        if not summary_files:
-            raise RuntimeError(f"No summary file found in {output_dir}")
-
-        with open(summary_files[0]) as f:
-            summary = json.load(f)
-
-        confidence = summary.get("ranking_score", 0)
-        metrics = {
-            "iptm": summary.get("iptm"),
-            "ptm": summary.get("ptm"),
-            "ranking_score": summary.get("ranking_score"),
-            "chain_pair_pae_min": summary.get("chain_pair_pae_min", [[0, 0], [0, 0]]),
-            "chain_ptm": summary.get("chain_ptm", [0, 0]),
-        }
-
+        model, summary_file, confidence_file = prediction_files(output_dir)
+        summary = json.loads(summary_file.read_text())
+        confidence = float(summary["ranking_score"])
+        metrics = dict(summary)
         if save_structure:
-            model_files = list(output_dir.rglob("*_model.cif"))
-            if model_files and structure_dir:
-                nested_subdir = output_dir / f"{'_'.join(self.target_names)}_{seq_id}"
-                if nested_subdir.exists():
-                    root_files = [f for f in model_files if f.parent == nested_subdir]
-                    structure_file = root_files[0] if root_files else model_files[0]
-                else:
-                    structure_file = model_files[0]
-
-                dest_dir = Path(structure_dir) / seq_id
-                dest_dir.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(structure_file, dest_dir / structure_file.name)
-
-                conf_json = structure_file.parent / structure_file.name.replace(
-                    "_model.cif", "_confidences.json"
-                )
-                if conf_json.exists():
-                    shutil.copy2(conf_json, dest_dir / conf_json.name)
-                shutil.copy2(summary_files[0], dest_dir / summary_files[0].name)
+            if structure_dir is None:
+                raise ValueError("structure_dir is required when save_structure=True")
+            destination = Path(structure_dir) / seq_id
+            destination.mkdir(parents=True, exist_ok=True)
+            for p in (model, summary_file, confidence_file):
+                shutil.copy2(p, destination / p.name)
+            metrics.update(
+                structure_file=str(destination / model.name),
+                json_file=str(destination / confidence_file.name),
+            )
 
         return confidence, metrics
 

@@ -1,14 +1,12 @@
-"""Oracle that replays evaluations already on disk.
+"""Oracle that replays evaluations already on disk."""
 
-Used for two things: reproducing a published run without a GPU (the demo notebook), and
-regression-testing the loop's bookkeeping against a run whose outcome is known. It is
-not a predictor - asked for a sequence it has never seen, it raises rather than guessing,
-because a silent miss would let the loop report progress it never measured.
-"""
 from __future__ import annotations
 
 import json
 from pathlib import Path
+import math
+
+from .metrics import normalise, validate
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from ..af3_interface import StructureEvaluator
@@ -19,18 +17,15 @@ METRIC_KEYS = ("i_ptm", "ptm_binder", "min_pae_interaction")
 
 
 class ReplayOracle(StructureEvaluator):
-    """Look up recorded metrics by binder sequence.
+    """Look up recorded metrics by binder sequence."""
 
-    Args:
-        records: iterable of dicts with a ``sequence`` key and a ``metrics`` mapping.
-            Records whose ``status`` is present and not ``"complete"`` are ignored.
-        target: which receptor's metrics to return when a record holds several, e.g.
-            ``"TRKA"``. ``None`` means the record's ``metrics`` is already flat.
-        confidence_key: which metric the loop's scalar confidence should mirror.
-    """
-
-    def __init__(self, records: Iterable[Dict], target: Optional[str] = None,
-                 confidence_key: str = "i_ptm", oracle_version: str = "recorded"):
+    def __init__(
+        self,
+        records: Iterable[Dict],
+        target: Optional[str] = None,
+        confidence_key: str = "i_ptm",
+        oracle_version: str = "recorded",
+    ):
         self.target = target
         self.confidence_key = confidence_key
         self.oracle_version = oracle_version
@@ -66,13 +61,24 @@ class ReplayOracle(StructureEvaluator):
                 "evaluate new designs; point the loop at a real predictor instead."
                 % len(self._table)
             ) from None
-        metrics.update(oracle="replay", oracle_version=self.oracle_version,
-                       target=self.target)
-        return float(metrics.get(self.confidence_key, 0.0)), metrics
+        metrics = validate(
+            normalise(metrics, oracle="replay", oracle_version=self.oracle_version)
+        )
+        metrics["target"] = self.target
+        confidence = float(metrics[self.confidence_key])
+        if not math.isfinite(confidence):
+            raise ValueError(
+                f"Replay confidence {self.confidence_key!r} is unavailable"
+            )
+        return confidence, metrics
 
 
 @register_oracle("replay")
 def _build_replay(records=None, path=None, **kwargs) -> ReplayOracle:
     if (records is None) == (path is None):
         raise ValueError("pass exactly one of records= or path=")
-    return ReplayOracle.from_json(path, **kwargs) if path else ReplayOracle(records, **kwargs)
+    return (
+        ReplayOracle.from_json(path, **kwargs)
+        if path
+        else ReplayOracle(records, **kwargs)
+    )

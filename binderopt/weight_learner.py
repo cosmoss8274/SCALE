@@ -1,9 +1,5 @@
-"""Adaptive weight learning for the combined score, based on AF3 filter success.
+"""Optional score weights learned from configured confidence thresholds."""
 
-Optional and
-off by default (`RunConfig.learn_weights = False`); the optimizer falls
-back to the fixed `metric_weights` from config when this is disabled.
-"""
 from __future__ import annotations
 
 import json
@@ -15,6 +11,9 @@ import numpy as np
 try:
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_score
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class AdaptiveWeightLearner:
-    """Learns metric_weights via logistic regression against AF3 experimental thresholds."""
+    """Learns metric_weights via logistic regression against configured structure-confidence thresholds."""
 
     def __init__(self, af3_thresholds: Dict[str, float]):
         if not HAS_SKLEARN:
@@ -37,17 +36,26 @@ class AdaptiveWeightLearner:
         n_seqs = len(next(iter(metrics_dict.values())))
         success = np.ones(n_seqs, dtype=bool)
 
-        if "min_pae_interaction" in metrics_dict and "min_pae_interaction" in self.af3_thresholds:
-            success &= np.array(metrics_dict["min_pae_interaction"]) < self.af3_thresholds["min_pae_interaction"]
-        if "ptm_binder" in metrics_dict and "ptm_binder" in self.af3_thresholds:
-            success &= np.array(metrics_dict["ptm_binder"]) > self.af3_thresholds["ptm_binder"]
-        if "l_rmsd" in metrics_dict and "l_rmsd" in self.af3_thresholds:
-            success &= np.array(metrics_dict["l_rmsd"]) < self.af3_thresholds["l_rmsd"]
+        for key, threshold in self.af3_thresholds.items():
+            if threshold is None:
+                continue
+            if key not in metrics_dict:
+                raise ValueError(f"Threshold metric {key} is unavailable")
+            values = np.asarray(metrics_dict[key], dtype=float)
+            success &= np.isfinite(values)
+            success &= (
+                values > threshold
+                if key in {"i_ptm", "ptm_binder", "ptm"}
+                else values < threshold
+            )
 
         return success
 
     def learn_weights(
-        self, metrics_dict: Dict[str, List[float]], metric_names: List[str], iteration: int = 0
+        self,
+        metrics_dict: Dict[str, List[float]],
+        metric_names: List[str],
+        iteration: int = 0,
     ) -> Optional[Dict[str, float]]:
         """Fit a logistic regression predicting AF3-filter success from metrics; return normalized weights."""
         y = self.define_success(metrics_dict)
@@ -55,14 +63,22 @@ class AdaptiveWeightLearner:
         n_success = int(y.sum())
         n_total = len(y)
 
-        logger.info("[Weight Learning iter %d] success rate %.1f%% (%d/%d)",
-                    iteration, success_rate * 100, n_success, n_total)
+        logger.info(
+            "[Weight Learning iter %d] success rate %.1f%% (%d/%d)",
+            iteration,
+            success_rate * 100,
+            n_success,
+            n_total,
+        )
 
         if n_success < 2:
             logger.error("Only %d successful sequences, need at least 2", n_success)
             return None
         if success_rate >= 0.95:
-            logger.error("Success rate too high (%.1f%%), need some failures for learning", success_rate * 100)
+            logger.error(
+                "Success rate too high (%.1f%%), need some failures for learning",
+                success_rate * 100,
+            )
             return None
 
         X_cols, valid_metrics = [], []
@@ -76,10 +92,19 @@ class AdaptiveWeightLearner:
             return None
 
         X = np.column_stack(X_cols)
-        if np.any(~np.isfinite(X)):
-            X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+        complete = np.isfinite(X).all(axis=1)
+        X, y = X[complete], y[complete]
+        n_success, n_total = int(y.sum()), len(y)
+        n_failure = n_total - n_success
+        if min(n_success, n_failure) < 2:
+            return None
 
-        lr = LogisticRegression(penalty="l2", C=1.0, max_iter=1000, random_state=42, class_weight="balanced")
+        lr = make_pipeline(
+            StandardScaler(),
+            LogisticRegression(
+                C=1.0, max_iter=1000, random_state=42, class_weight="balanced"
+            ),
+        )
         try:
             lr.fit(X, y)
         except Exception as exc:
@@ -87,7 +112,7 @@ class AdaptiveWeightLearner:
             return None
 
         try:
-            cv_folds = min(5, n_success)
+            cv_folds = min(5, n_success, n_failure)
             cv_scores = cross_val_score(lr, X, y, cv=cv_folds, scoring="roc_auc")
             cv_mean = float(cv_scores.mean())
             logger.info("Cross-validation AUC: %.3f +/- %.3f", cv_mean, cv_scores.std())
@@ -95,27 +120,41 @@ class AdaptiveWeightLearner:
             logger.warning("Cross-validation failed: %s", exc)
             cv_mean = 0.0
 
-        raw_weights = lr.coef_[0]
+        raw_weights = (
+            lr.named_steps["logisticregression"].coef_[0]
+            / lr.named_steps["standardscaler"].scale_
+        )
+        if np.abs(raw_weights).sum() == 0:
+            return None
         normalized_weights = raw_weights / np.abs(raw_weights).sum()
-        learned_weights = {metric: float(w) for metric, w in zip(valid_metrics, normalized_weights)}
+        learned_weights = {
+            metric: float(w) for metric, w in zip(valid_metrics, normalized_weights)
+        }
 
-        self.weight_history.append({
-            "iteration": iteration,
-            "weights": learned_weights,
-            "cv_auc": cv_mean,
-            "success_rate": float(success_rate),
-            "n_samples": n_total,
-            "n_success": n_success,
-            "metrics_used": valid_metrics,
-        })
+        self.weight_history.append(
+            {
+                "iteration": iteration,
+                "weights": learned_weights,
+                "cv_auc": cv_mean,
+                "success_rate": float(success_rate),
+                "n_samples": n_total,
+                "n_success": n_success,
+                "metrics_used": valid_metrics,
+            }
+        )
         self.weights = learned_weights
         return learned_weights
 
     def calculate_hit_rate(
-        self, metrics_dict: Dict[str, List[float]], predicted_scores: np.ndarray, top_n: int = 100
+        self,
+        metrics_dict: Dict[str, List[float]],
+        predicted_scores: np.ndarray,
+        top_n: int = 100,
     ) -> Dict:
         """Of the top-N sequences by predicted score, what fraction pass AF3 filters (vs random baseline)?"""
         success = self.define_success(metrics_dict)
+        if top_n < 1 or not len(predicted_scores):
+            raise ValueError("Hit rate requires a nonempty ranked selection")
         top_n = min(top_n, len(predicted_scores))
         top_indices = np.argsort(predicted_scores)[-top_n:]
 
@@ -125,8 +164,11 @@ class AdaptiveWeightLearner:
         enrichment = hit_rate / random_hit_rate if random_hit_rate > 0 else 0.0
 
         return {
-            "hit_rate": hit_rate, "hits": hits, "top_n": top_n,
-            "random_baseline": random_hit_rate, "enrichment": enrichment,
+            "hit_rate": hit_rate,
+            "hits": hits,
+            "top_n": top_n,
+            "random_baseline": random_hit_rate,
+            "enrichment": enrichment,
         }
 
     def save_history(self, filepath: str) -> None:

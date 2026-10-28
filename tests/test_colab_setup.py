@@ -1,4 +1,5 @@
 """Installation recovery checks; no downloads, models or predictions are executed."""
+
 import ast
 from contextlib import ExitStack, redirect_stdout
 from importlib import metadata
@@ -15,15 +16,27 @@ from unittest.mock import patch
 
 
 class ColabSetupTests(unittest.TestCase):
-    def run_setup(self, root, backend_python=(3, 12, 12), fail_install=False,
-                  backend_gpu_available=True):
-        notebook = Path(__file__).resolve().parents[1] / "notebooks/SCALE_demo_colab.ipynb"
+    def run_setup(
+        self,
+        root,
+        backend_python=(3, 12, 12),
+        fail_install=False,
+        backend_gpu_available=True,
+    ):
+        notebook = (
+            Path(__file__).resolve().parents[1] / "notebooks/SCALE_demo_colab.ipynb"
+        )
         cells = json.loads(notebook.read_text())["cells"]
-        source = next("".join(c["source"]) for c in cells
-                      if c["cell_type"] == "code" and "BOLTZ_ENV = Path" in "".join(c["source"]))
-        paths = {"/content/SCALE": str(root / "checkout"),
-                 "/content/scale_run": str(root / "run"),
-                 "/content/.scale-boltz2-py312": str(root / "backend")}
+        source = next(
+            "".join(c["source"])
+            for c in cells
+            if c["cell_type"] == "code" and "BOLTZ_ENV = Path" in "".join(c["source"])
+        )
+        paths = {
+            "/content/SCALE": str(root / "checkout"),
+            "/content/scale_run": str(root / "run"),
+            "/content/.scale-boltz2-py312": str(root / "backend"),
+        }
 
         class Locations(ast.NodeTransformer):
             def visit_Constant(self, node):
@@ -54,13 +67,19 @@ class ColabSetupTests(unittest.TestCase):
                 if not backend_gpu_available:
                     raise subprocess.CalledProcessError(1, command)
                 return json.dumps({"name": "test-GPU", "cuda": "test"})
-            return json.dumps({"boltz": "2.2.1", "torch": "test-backend", "numpy": "test"})
+            return json.dumps(
+                {"boltz": "2.2.1", "torch": "test-backend", "numpy": "test"}
+            )
 
         with ExitStack() as stack:
             stack.enter_context(patch.object(subprocess, "run", side_effect=run))
-            stack.enter_context(patch.object(subprocess, "check_output", side_effect=check_output))
+            stack.enter_context(
+                patch.object(subprocess, "check_output", side_effect=check_output)
+            )
             stack.enter_context(patch.object(importlib, "import_module"))
-            stack.enter_context(patch.object(metadata, "version", return_value="test-kernel"))
+            stack.enter_context(
+                patch.object(metadata, "version", return_value="test-kernel")
+            )
             stack.enter_context(patch.dict(os.environ, {"PATH": "/original/bin"}))
             stack.enter_context(patch.object(sys, "path", list(sys.path)))
             stack.enter_context(redirect_stdout(io.StringIO()))
@@ -78,7 +97,9 @@ class ColabSetupTests(unittest.TestCase):
             commands = self.run_setup(root)
             self.assertTrue(any(c[3:5] == ["pip", "install"] for c in commands))
             self.assertFalse(any(c[:2] == ["git", "clone"] for c in commands))
-            kernel_installs = [c for c in commands if c[1:4] == ["-m", "pip", "install"]]
+            kernel_installs = [
+                c for c in commands if c[1:4] == ["-m", "pip", "install"]
+            ]
             self.assertTrue(kernel_installs)
             self.assertTrue(all("torch" not in c for c in kernel_installs))
             result = json.loads((root / "run/environment.json").read_text())

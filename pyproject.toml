@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scale-binderopt"
-version = "0.1.0"
+version = "0.2.0"
 description = "Structure-conditioned active learning for binder optimisation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,13 +18,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 
-# The loop itself. The structure oracle is deliberately not a dependency: Boltz-2 pulls in a
-# large CUDA stack, and a user replaying recorded metrics or plugging in their own oracle
-# needs none of it. Install it with the `boltz` extra, or follow its own instructions.
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
-    "pandas>=2.0",
     "scikit-learn>=1.3",
     "torch>=2.0",
     "fair-esm>=2.0.0",
@@ -37,19 +33,19 @@ dependencies = [
 [project.optional-dependencies]
 boltz = ["boltz>=2.0"]
 notebook = ["notebook>=7.0", "py3Dmol>=2.0"]
-biophys = ["freesasa>=2.2"]          # PyRosetta is licensed and not on PyPI
 dev = ["pytest>=7.0", "nbformat>=5.9", "nbclient>=0.9"]
 
 [project.urls]
 Homepage = "https://github.com/cosmoss8274/SCALE"
 Issues = "https://github.com/cosmoss8274/SCALE/issues"
 
-# No console script: design.py is a top-level driver run as `python design.py`, not a module
-# inside the package, so an entry point pointing at it would break on an installed copy.
 
-[tool.setuptools]
-packages = ["binderopt", "binderopt.oracles", "binderopt.generators"]
+[tool.setuptools.packages.find]
+include = ["binderopt*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: needs model downloads and minutes of CPU (deselect with -m 'not slow')"]
+
+[tool.setuptools.package-data]
+binderopt = ["configs/*.yaml", "configs/targets/*.yaml"]

@@ -4,12 +4,12 @@ A RunConfig is built by deep-merging ``configs/defaults.yaml`` with a target
 yaml file (``configs/targets/<name>.yaml``), then applying CLI overrides.
 Target values win over defaults; CLI flags win over both.
 """
+
 from __future__ import annotations
 
 import argparse
 import copy
 from dataclasses import dataclass, field, fields
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 
@@ -17,11 +17,7 @@ def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]
     """Recursively merge ``override`` into a copy of ``base`` (override wins)."""
     merged = copy.deepcopy(base)
     for key, value in override.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
             merged[key] = deep_merge(merged[key], value)
         else:
             merged[key] = copy.deepcopy(value)
@@ -30,14 +26,7 @@ def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]
 
 @dataclass
 class RunConfig:
-    """Resolved configuration for a single optimization run.
-
-    Most fields mirror the keys found in ``configs/defaults.yaml`` and
-    ``configs/targets/<name>.yaml``. Unrecognized/extra YAML keys are kept in
-    ``extra`` so that target-specific blocks (e.g. ``selectivity``,
-    ``residue_sampling``) survive without requiring a dataclass field for
-    every possible key.
-    """
+    """Resolved configuration for a single optimization run."""
 
     target_name: str
     target_sequence: str = ""
@@ -60,9 +49,6 @@ class RunConfig:
     use_protenix: bool = False
     calculate_rmsd: bool = True
     reference_structures_dir: Optional[str] = None
-    # Empty means "read SCALE_AF3_DB_DIR / SCALE_AF3_MODEL_DIR at the point of use"; see
-    # binderopt/external.py. Left empty rather than defaulted to a path, which would only
-    # ever be right on one machine.
     af3_db_dir: str = ""
     af3_model_dir: str = ""
     af3_structure_dir: str = ""
@@ -84,15 +70,8 @@ class RunConfig:
     injection_sources: Dict[str, Any] = field(default_factory=dict)
     use_injected_as_parents: bool = True
 
-    # Active per-candidate ProteinMPNN NLL scoring (on by default; degrades
-    # gracefully to NaN if the ProteinMPNN repo/env isn't available -- see
-    # binderopt/mpnn_scorer.py).
     active_nll_scoring: bool = True
 
-    # Max number of initial sequences allowed to have NLL back-filled via
-    # ProteinMPNN score_only at startup. Each call takes ~3-5s (subprocess
-    # spawn), so the default of 100 keeps startup overhead under ~8 min.
-    # Set to a large value (e.g. 9999) to score all initial sequences.
     initial_nll_score_limit: int = 100
 
     # Residue-level guided sampling
@@ -138,12 +117,20 @@ def build_arg_parser(target_choices: list) -> argparse.ArgumentParser:
         choices=sorted(target_choices),
         help="Target registry key (configs/targets/<target_name>.yaml).",
     )
-    parser.add_argument("--iters", type=int, default=None, help="Override n_iterations.")
     parser.add_argument(
-        "--mutants_per_round", type=int, default=None, help="Override mutants_per_round."
+        "--iters", type=int, default=None, help="Override n_iterations."
     )
     parser.add_argument(
-        "--top_n_for_sampling", type=int, default=None, help="Override top_n_for_sampling."
+        "--mutants_per_round",
+        type=int,
+        default=None,
+        help="Override mutants_per_round.",
+    )
+    parser.add_argument(
+        "--top_n_for_sampling",
+        type=int,
+        default=None,
+        help="Override top_n_for_sampling.",
     )
     parser.add_argument(
         "--output_dir",
@@ -168,7 +155,10 @@ def build_arg_parser(target_choices: list) -> argparse.ArgumentParser:
         help="Force-disable active per-candidate ProteinMPNN NLL scoring (on by default).",
     )
     parser.add_argument(
-        "--resume_from", type=str, default=None, help="Path to a checkpoint to resume from."
+        "--resume_from",
+        type=str,
+        default=None,
+        help="Path to a checkpoint to resume from.",
     )
     parser.add_argument(
         "--device",

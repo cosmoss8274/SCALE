@@ -1,25 +1,5 @@
-"""Generate the SCALE notebooks -- both of them, from this one source.
+"""Generate the local and Colab demonstration notebooks."""
 
-    python notebooks/build_notebook.py
-
-writes two files:
-
-    notebooks/SCALE_demo.ipynb         run it where you already have an environment
-    notebooks/SCALE_demo_colab.ipynb   run it on a fresh Colab T4, nothing installed
-
-They are the same pipeline. The Colab variant adds setup, a GPU assertion, weight
-downloads and a results download, and rebases every path under ``/content``; the local
-variant assumes a working checkout and writes beside it. Generating both from one source
-is deliberate: hand-maintained pairs drift, and the drift is silent -- Protein-Hunter's
-own pair diverged in how it aggregates ipTM, with only the Colab copy updated.
-
-The notebook runs a real optimisation: a real structure oracle on real new sequences.
-Nothing is replayed. The four things a user supplies -- target, starting pool, oracle,
-objective -- each get their own cell.
-
-Committed unexecuted, which is the field convention: BindCraft and Protein-Hunter both
-ship their Colab notebooks with no outputs. py3Dmol views cannot survive a save anyway.
-"""
 from __future__ import annotations
 
 import sys
@@ -34,7 +14,7 @@ HERE = Path(__file__).resolve().parent
 REPO_URL = "https://github.com/cosmoss8274/SCALE"
 COLAB_NOTEBOOK = "notebooks/SCALE_demo_colab.ipynb"
 
-COLAB_SETUP = r'''
+COLAB_SETUP = r"""
 #@title Install SCALE and Boltz-2 { display-mode: "form" }
 #@markdown Repository to clone. Change this only to use your own fork.
 REPO_URL = "__REPO_URL__"  #@param {type:"string"}
@@ -66,9 +46,6 @@ if str(CODE) not in sys.path:
 DATA = CODE / "data"
 RUN.mkdir(parents=True, exist_ok=True)
 
-# The notebook keeps Colab's CUDA-matched torch. Boltz-2 has a separate Python 3.12
-# environment because its published packages do not support Python 3.13.
-# Always check dependencies: an existing checkout does not mean setup succeeded.
 print("Checking notebook dependencies ...", flush=True)
 subprocess.run(
     [sys.executable, "-m", "pip", "install", "-q", "uv", "fair-esm",
@@ -110,7 +87,7 @@ backend_gpu = json.loads(subprocess.check_output(
 env_bin = str(BOLTZ_ENV / "bin")
 path_parts = os.environ.get("PATH", "").split(os.pathsep)
 os.environ["PATH"] = os.pathsep.join([env_bin] + [p for p in path_parts if p != env_bin])
-for module in ("numpy", "pandas", "scipy", "sklearn", "esm", "Bio", "yaml", "py3Dmol"):
+for module in ("numpy", "scipy", "sklearn", "esm", "Bio", "yaml", "py3Dmol"):
     importlib.import_module(module)
 
 backend_versions = json.loads(subprocess.check_output(
@@ -138,7 +115,7 @@ print("Setup checks passed. No prediction has been run.")
 print(json.dumps(environment, indent=2))
 print("Code:", CODE)
 print("Results:", RUN)
-'''
+"""
 
 
 md, code = nbf.v4.new_markdown_cell, nbf.v4.new_code_cell
@@ -151,59 +128,14 @@ def form(source: str):
     return cell
 
 
-# ----------------------------------------------------------------------------------
-# Cells shared by both variants are functions of `colab` so the few differences stay
-# next to the code they affect rather than in a patch applied afterwards.
-# ----------------------------------------------------------------------------------
-
 def title_cells(colab: bool):
-    cells = []
-    if colab:
-        cells.append(md(
-            '<a href="https://colab.research.google.com/github/%s/blob/main/%s" '
-            'target="_parent"><img src="https://colab.research.google.com/assets/'
-            'colab-badge.svg" alt="Open In Colab"/></a>'
-            % (REPO_URL.removeprefix("https://github.com/"), COLAB_NOTEBOOK)))
-
-    cells.append(md(r"""# SCALE — run the loop on your own target
-
-**SCALE** (Structure-Conditioned Active Learning for protein Evolution) is an optimisation
-loop placed *after* a binder generator. The generator supplies a pool of candidates; SCALE
-decides where to spend structure predictions, learns a sequence model from what it measures,
-and proposes the next designs.
-
-```
- pool of designs ──▶ structure oracle ──▶ metrics ──▶ surrogate (ESM-2 + random forest)
-       ▲                                                        │
-       └──────────── guided mutation ◀── ranked proposals ◀──────┘
-```
-
-**This notebook runs that loop for real.** Every structure in it is predicted while it
-runs, on sequences that did not exist before you ran the cell. Nothing is replayed.
-
-Four things are yours to supply, and each has its own cell:
-
-| | what | default here |
-|---|---|---|
-| **1** | the **target** | TrkA ligand-binding domain (101 aa) |
-| **2** | the **starting pool** — from any generator | 100 designs shipped in `data/` |
-| **3** | the **oracle** — any structure predictor | Boltz-2 |
-| **4** | the **objective** — what "better" means | maximise interface pTM |"""))
-
-    cells.append(md(r"""> **⚠️ Read before you run.**
->
-> - This pipeline has **not been experimentally validated**. It optimises a structure
->   predictor's confidence, which is not the same as optimising binding. Treat the output
->   as candidates to test, never as results.
-> - The oracle is also the scorer, so the loop is optimising the quantity it is judged by.
->   `analysis/` computes independent structural measures for exactly that reason.
-> - **Metrics are not comparable across predictors.** An interface pTM of 0.80 from Boltz-2
->   does not denote what 0.80 from AlphaFold 3 denotes. The manuscript's hit criteria are
->   calibrated on AlphaFold 3 and do not transfer. Every record is stamped with the oracle
->   that produced it, and the code refuses to pool two oracles in one comparison.
-> - A short run shows the loop **working**, not that the method works. That claim needs the
->   full-scale runs in the manuscript (15 rounds, 225 predictions per target)."""))
-    return cells
+    badge = f"[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cosmoss8274/SCALE/blob/main/{COLAB_NOTEBOOK})"
+    return [
+        md(badge),
+        md(
+            "# SCALE\n\nOptimise a candidate binder pool with structure predictions, an ESM-2 surrogate and guided mutation. Supply a receptor sequence, a CSV or FASTA pool, a predictor and an objective."
+        ),
+    ]
 
 
 def setup_cells(colab: bool):
@@ -213,7 +145,7 @@ def setup_cells(colab: bool):
     if colab:
         cells.append(form(COLAB_SETUP.replace("__REPO_URL__", REPO_URL).strip()))
 
-        cells.append(form(r'''#@title 🖥️ Check the GPU { display-mode: "form" }
+        cells.append(form(r"""#@title 🖥️ Check the GPU { display-mode: "form" }
 #@markdown Boltz-2 needs a CUDA GPU. This cell **stops the notebook** if there is not one,
 #@markdown rather than letting a CPU run start that would never finish.
 import torch
@@ -228,9 +160,11 @@ free, total = torch.cuda.mem_get_info()
 print("GPU: %s  (%.1f of %.1f GB free)" % (name, free / 1e9, total / 1e9))
 if total / 1e9 < 14:
     print("\nNote: under ~15 GB you may hit OOM on long targets. Shorten the receptor,\n"
-          "or use a larger runtime.")'''))
+          "or use a larger runtime.")"""))
     else:
-        cells.append(code(r'''# Local run: assumes the environment of requirements.txt and a checkout you are in.
+        cells.append(
+            code(
+                r"""# Local run: assumes the environment of requirements.txt and a checkout you are in.
 #     pip install -r requirements.txt && pip install boltz
 import sys
 from pathlib import Path
@@ -244,9 +178,11 @@ RUN = (CODE / "run"); RUN.mkdir(exist_ok=True)
 import torch
 print("code:", CODE)
 print("GPU :", torch.cuda.get_device_name(0) if torch.cuda.is_available()
-       else "none — Boltz-2 needs CUDA; the rest of the notebook still runs")'''))
+       else "none — Boltz-2 needs CUDA; the rest of the notebook still runs")"""
+            )
+        )
 
-    budget = r'''#@title ⚙️ Budget and plot style { display-mode: "form" }
+    budget = r"""#@title ⚙️ Budget and plot style { display-mode: "form" }
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -263,7 +199,6 @@ BLUE, GREY, AMBER = "#1F5FBF", "#9aa0a6", "#E08A1E"
 #@markdown
 #@markdown Ten initial labels make this a small demonstration. More labels can improve
 #@markdown coverage, especially when the starting sequences are genuinely diverse.
-#@markdown Keep the initial batch and oracle settings fixed when comparing algorithms.
 N_SEED       = 10   #@param {type:"integer"}
 N_ROUNDS     = 5    #@param {type:"integer"}
 N_PER_ROUND  = 5    #@param {type:"integer"}
@@ -271,7 +206,7 @@ N_PER_ROUND  = 5    #@param {type:"integer"}
 #@markdown be large; the default ranks 600 proposals per round.
 N_CANDIDATES = 600  #@param {type:"integer"}
 #@markdown Default: wider exploration (8/8/4 positions for an 80-aa binder).
-#@markdown Alternative tested setting: 0.0625 / 0.0625 / 0.0375 with refinement enabled.
+#@markdown Sequence-distance fractions and local refinement are configurable.
 MIN_POOL_DISTANCE = 0.10  #@param {type:"number"}
 MIN_BATCH_DISTANCE = 0.10  #@param {type:"number"}
 MIN_HISTORY_DISTANCE = 0.05  #@param {type:"number"}
@@ -287,7 +222,7 @@ policy = DiversityPolicy(MIN_POOL_DISTANCE, MIN_BATCH_DISTANCE,
 _total = N_SEED + N_ROUNDS * N_PER_ROUND
 print("%d structure predictions in total" % _total)
 print("at 1-2 min each that is roughly %d-%d minutes of GPU time" % (_total, 2 * _total))
-print("checkpointed after every prediction, so a disconnect costs at most one")'''
+print("checkpointed after every prediction, so a disconnect costs at most one")"""
     cells.append(form(budget))
     return cells
 
@@ -299,15 +234,12 @@ def target_cells(colab: bool):
 
 One receptor sequence. The default is the fifth extracellular domain of TrkA (UniProt
 P04629, residues 282–382; the segment modelled in PDB 1WWW)."""),
-
-        form(r'''#@title 1. The receptor { display-mode: "form" }
+        form(r"""#@title 1. The receptor { display-mode: "form" }
 #@markdown Paste your own receptor sequence to retarget the whole notebook.
 TARGET_NAME = "TRKA"  #@param {type:"string"}
 TARGET_SEQUENCE = "VSFPASVQLHTAVEMHHWCIPFSVDGQPAPSLRWLFNGSVLNETSFIFTEFLEPAANETVRHGCLRLNQPTHVNNGNYTLLAANPFGQASASIMAAFMDNP"  #@param {type:"string"}
 
-#@markdown An MSA makes the receptor fold markedly more accurate. Leave the server option
-#@markdown on unless you have your own A3M — but note it sends the receptor sequence to a
-#@markdown public third-party service.
+#@markdown Optional remote MSA: sends the receptor sequence to the public MMseqs2 service.
 USE_MSA_SERVER = True  #@param {type:"boolean"}
 TARGET_MSA = ""  #@param {type:"string"}
 
@@ -322,13 +254,14 @@ if TARGET_MSA:
 elif USE_MSA_SERVER:
     print("receptor MSA: fetched by Boltz from the public MMseqs2 server")
 else:
-    print("receptor MSA: none — single-sequence mode is markedly less accurate")'''),
-
+    print("receptor MSA: single-sequence mode")"""),
         md("Before spending GPU time, look at what you are designing against."),
-
-        form(r'''#@title 1.1 Look at the target { display-mode: "form" }
+        form(
+            r'''#@title 1.1 Look at the target { display-mode: "form" }
 #@markdown Orientation only — the loop needs just the sequence. Leave blank to skip.
-TARGET_STRUCTURE = "''' + structure_default + r'''"  #@param {type:"string"}
+TARGET_STRUCTURE = "'''
+            + structure_default
+            + r""""  #@param {type:"string"}
 TARGET_CHAIN     = "A"  #@param {type:"string"}
 
 import py3Dmol
@@ -342,31 +275,17 @@ if path and path.exists():
     print("%s chain %s" % (path.name, TARGET_CHAIN))
     view.show()
 else:
-    print("no structure supplied — skipping. The loop does not need one.")'''),
+    print("no structure supplied — skipping. The loop does not need one.")"""
+        ),
     ]
 
 
 def pool_cells(colab: bool):
     return [
-        md(r"""## 2 Your starting pool
-
-SCALE does not generate the first designs; it improves designs something else produced.
-Generators are selected by name and registered like oracles, so a new one plugs in without
-touching the loop:
-
-```python
-from binderopt.generators import get_generator, GENERATORS
-
-get_generator("file", path="my_designs.csv")        # anything, from any tool
-get_generator("rfdiffusion_mpnn", config=cfg)       # run the pipeline here
-```
-
-The pool shipped here contains 100 TrkA candidates. It is highly redundant: 92 sequences
-have another pool sequence only one residue away. It illustrates constrained sequence
-optimisation rather than 100 distinct binder families. **Point
-`POOL_PATH` at your own CSV or FASTA and the rest of the notebook is unchanged.**"""),
-
-        form(r'''#@title 2. The starting pool { display-mode: "form" }
+        md(
+            "## 2 Your starting pool\n\nSupply a CSV with a sequence column, or a FASTA file."
+        ),
+        form(r"""#@title 2. The starting pool { display-mode: "form" }
 from binderopt.generators import get_generator, GENERATORS
 
 #@markdown A CSV (with a sequence column) or a FASTA. Yours goes here.
@@ -410,30 +329,16 @@ if len({len(s) for s in pool}) != 1:
     raise ValueError("Distance-constrained substitution search requires equal-length binders")
 print("starting-batch selection:", json.dumps(seed_selection))
 print("%s: %d designs of %d aa | %d sampled to measure"
-      % (generator.describe(), len(pool), len(pool[0]), len(seed_designs)))'''),
+      % (generator.describe(), len(pool), len(pool[0]), len(seed_designs)))"""),
     ]
 
 
 def oracle_cells(colab: bool):
     return [
-        md(r"""## 3 Your oracle
-
-The loop never calls a predictor directly. It calls an object with
-`predict(binder_sequence) -> (confidence, metrics)`, and every backend translates its own
-field names into one vocabulary — `i_ptm`, `ptm_binder`, `min_pae_interaction` — defined in
-`binderopt/oracles/metrics.py`. Switching predictor is one line:
-
-```python
-get_oracle("boltz2", target_sequence=seq, ...)   # open source, runs here
-get_oracle("af3",    interface=af3_interface)    # on a cluster you control
-```
-
-A new predictor is a `@register_oracle("name")` decorator in your own code — no edit to the
-package. What the contract does **not** do is make two predictors comparable: a shared name
-is not a shared scale, so each record is stamped with the oracle that produced it and the
-code refuses to pool them."""),
-
-        form(r'''#@title 3. The oracle { display-mode: "form" }
+        md(
+            "## 3 Your oracle\n\nSelect a structure predictor through the oracle interface. This example uses Boltz-2."
+        ),
+        form(r"""#@title 3. The oracle { display-mode: "form" }
 from binderopt.oracles import get_oracle, ORACLES
 from binderopt.oracles.evaluator import OracleEvaluator
 
@@ -454,7 +359,7 @@ oracle = get_oracle(
     accelerator="gpu" if torch.cuda.is_available() else "cpu",
 )
 evaluator = OracleEvaluator(oracle, structure_dir=str(RUN / "structures"))
-print("oracle: %s (%s)" % (type(oracle).__name__, oracle.oracle_version))'''),
+print("oracle: %s (%s)" % (type(oracle).__name__, oracle.oracle_version))"""),
     ]
 
 
@@ -474,8 +379,7 @@ selectivity("TRKA", ["TRKB", "TRKC"], penalty=2.5) # needs per-receptor metrics
 The objective sits outside the surrogate on purpose: the surrogate predicts *metrics*, the
 objective combines them. Changing what you optimise for therefore does not invalidate a
 trained surrogate, and two runs stay comparable on the underlying metrics."""),
-
-        form(r'''#@title 4. The objective { display-mode: "form" }
+        form(r"""#@title 4. The objective { display-mode: "form" }
 from binderopt.objectives import maximise, minimise, weighted, selectivity, describe
 
 OBJECTIVE = "maximise i_ptm"  #@param ["maximise i_ptm", "minimise min_pae_interaction", "weighted i_ptm - 0.1*pae"]
@@ -486,20 +390,21 @@ objective = {
     "weighted i_ptm - 0.1*pae": lambda: weighted({"i_ptm": 1.0,
                                                   "min_pae_interaction": -0.1}),
 }[OBJECTIVE]()
-print("objective:", describe(objective))'''),
+print("objective:", describe(objective))"""),
     ]
 
 
 def loop_cells(colab: bool):
     return [
-        md(r"""## 5 Round 0 — measure the pool
+        md(
+            r"""## 5 Round 0 — measure the pool
 
 The first predictions. These are the labels the surrogate learns from, so they are spent on
 the starting pool rather than on proposals.
 
 Each round is checkpointed to `RUN/history.json`, and re-running the loop cell picks up
-where it stopped. Colab disconnects; an hour of GPU time should not die with the tab."""),
-
+where it stopped. Colab disconnects; an hour of GPU time should not die with the tab."""
+        ),
         form(r'''#@title 5. Measure the starting pool { display-mode: "form" }
 import time
 from binderopt.oracles.metrics import describe as describe_metrics
@@ -567,20 +472,11 @@ if not measured:
 scores0 = [objective(m) for m in measured]
 print("objective: median %.3f | best %.3f" % (np.median(scores0), max(scores0)))
 print("best design:", describe_metrics(max(measured, key=objective)))'''),
-
-        md(r"""## 6 The loop
-
-Each round, in full, with nothing hidden:
-
-1. **train** the surrogate on everything measured so far
-2. **propose** mutants from the best measured representative of several founding seeds;
-   enabling novel refinement instead prioritises novel representatives with initial-seed fallbacks
-3. **filter and rank** by distance to the entire starting pool and earlier new designs,
-   then surrogate score; select a batch with pairwise distance and founder caps
-4. **measure** exactly `N_PER_ROUND` accepted proposals with the oracle
-5. **keep** the results, checkpoint, repeat"""),
-
-        form(r'''#@title 6. Run the loop { display-mode: "form" }
+        md(
+            "## 6 Optimise\n\nFit the surrogate, propose sequence mutations, rank candidates and evaluate the next batch."
+        ),
+        form(
+            r"""#@title 6. Run the loop { display-mode: "form" }
 import random
 from binderopt.models import MultiHeadSurrogate
 from binderopt.sampling import MultiMetricGuidedSampler
@@ -643,7 +539,8 @@ for rnd in range(1, N_ROUNDS + 1):
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-print("\n%d designs measured over %d rounds" % (len(history), len({h["round"] for h in history})))'''),
+print("\n%d designs measured over %d rounds" % (len(history), len({h["round"] for h in history})))"""
+        ),
     ]
 
 
@@ -651,11 +548,10 @@ def results_cells(colab: bool):
     cells = [
         md(r"""## 7 The trajectory
 
-Scores and sequence exploration from the run just measured. The round median may go
-up or down; the best-so-far curve is cumulative. Distance panels show whether high scores
-come from near copies. Round 0 is the selected initial batch, not the full pool."""),
-
-        form(r'''#@title 7. Trajectory { display-mode: "form" }
+Measured objective values and structure-confidence metrics from this run. The
+best-so-far curve is cumulative; metric curves show each round's median. Round 0 is
+the selected initial batch. Sequence distances remain in the saved candidate table."""),
+        form(r"""#@title 7. Trajectory { display-mode: "form" }
 from binderopt.demo_reporting import annotate_distances, plot_trajectory
 annotate_distances(history, pool)
 save_history()
@@ -667,14 +563,9 @@ first = [objective(h) for h in history if h["round"] == 0]
 last = [objective(h) for h in history if h["round"] == rounds[-1]]
 print("objective: round 0 median %.3f → round %d median %.3f (run best %.3f)"
       % (np.median(first), rounds[-1], np.median(last),
-         max(objective(h) for h in history)))'''),
-
-        md(r"""With five rounds of five designs this shows the loop **running**, not that the
-method works. Raise `N_ROUNDS` if you want the trend rather than the mechanics."""),
-
+         max(objective(h) for h in history)))"""),
         md("## 8 The best design"),
-
-        form(r'''#@title 8. The best design { display-mode: "form" }
+        form(r"""#@title 8. The best design { display-mode: "form" }
 import py3Dmol
 
 new_designs = [h for h in history if h["round"] > 0]
@@ -698,9 +589,9 @@ if structure and Path(structure).exists():
     view.zoomTo()
     view.show()
 else:
-    print("\n(no structure file kept for this design)")'''),
-
-        form(r'''#@title 8.1 Save the run { display-mode: "form" }
+    print("\n(no structure file kept for this design)")"""),
+        form(
+            r"""#@title 8.1 Save the run { display-mode: "form" }
 import csv
 
 FIELDS = ["round", "sequence_id", "sequence", "objective", "i_ptm", "ptm_binder",
@@ -738,11 +629,12 @@ with open(RUN / "diverse_portfolio.csv", "w", newline="") as fh:
 print("Diverse measured portfolio (iPTM | substitutions from nearest starting sequence):")
 for h in portfolio:
     print("  %s | %.3f | %d | founder %s" %
-          (h["sequence_id"], h["i_ptm"], h["mutations_from_pool"], h["founder_id"]))'''),
+          (h["sequence_id"], h["i_ptm"], h["mutations_from_pool"], h["founder_id"]))"""
+        ),
     ]
 
     if colab:
-        cells.append(form(r'''#@title 📥 Download the results { display-mode: "form" }
+        cells.append(form(r"""#@title 📥 Download the results { display-mode: "form" }
 #@markdown Zips the predicted structures, the per-design metrics, the trajectory plot and
 #@markdown the run configuration, then downloads it — a Colab session is temporary.
 #@markdown
@@ -757,70 +649,54 @@ try:
     from google.colab import files
     files.download(archive)
 except ImportError:
-    print("not on Colab — the archive is at the path above")'''))
+    print("not on Colab — the archive is at the path above")"""))
 
     return cells
 
 
 def closing_cells(colab: bool):
-    return [md(r"""## 9 Beyond this notebook
-
-**A different predictor.** Register it and select it by name; the loop does not change.
-
-```python
-from binderopt.oracles import register_oracle
-from binderopt.oracles.metrics import normalise
-
-@register_oracle("my_predictor")
-def _build(**kw):
-    return MyAdapter(**kw)          # predict() -> (confidence, normalise(metrics, ...))
-```
-
-**A different generator.** Same shape — `@register_generator("name")`, and
-`generate(n) -> list[str]`.
-
-**Selectivity against a paralogue.** Give the loop one oracle per receptor and a
-`selectivity` objective; nothing else changes. The penalty takes the **maximum** over
-off-targets rather than their sum, so a design cannot score well by shedding one paralogue
-while keeping another, and it is linear rather than hinged, because a threshold leaves most
-candidates with zero gradient.
-
-**Running at scale.** `design.py` with a config in `configs/targets/` is the production
-driver: checkpointing, resumption, sequence injection, adaptive weights. It needs the
-external tools configured — see `binderopt/external.py`.
-
-**Things worth knowing.**
-
-- One AlphaFold 3 prediction of a 100-residue binder against a 100-residue receptor cost
-  0.50–0.97 GPU-minutes in the manuscript runs. Boltz-2 on a T4 is in the same range but
-  has not been benchmarked here.
-- The oracle is also the evaluator, so the loop optimises the quantity it is judged by.
-  `analysis/` computes independent structural measures for that reason.
-- Hit criteria are oracle-specific. Re-calibrate when you change backend.
-- A bigger starting pool buys a better *first* round, not a better last one.
-
-**Citing the pieces.** Boltz-2 (Passaro et al.), ESM-2 (Lin et al.), and, if you used them
-to make the pool, RFdiffusion (Watson et al.) and ProteinMPNN (Dauparas et al.). Their
-weights carry their own licences, which differ from this repository's.""")]
+    return [
+        md(
+            "## Further configuration\n\nRegister custom predictors and generators using the [extension guide](https://github.com/cosmoss8274/SCALE/blob/main/docs/extending.md). Cluster settings are described in [configuration](https://github.com/cosmoss8274/SCALE/blob/main/docs/configuration.md)."
+        )
+    ]
 
 
 def build(colab: bool):
     cells = []
-    for section in (title_cells, setup_cells, target_cells, pool_cells, oracle_cells,
-                    objective_cells, loop_cells, results_cells, closing_cells):
+    for section in (
+        title_cells,
+        setup_cells,
+        target_cells,
+        pool_cells,
+        oracle_cells,
+        objective_cells,
+        loop_cells,
+        results_cells,
+        closing_cells,
+    ):
         cells.extend(section(colab))
 
     nb = nbf.v4.new_notebook(cells=cells)
-    nb.metadata.update({
-        "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
-        "language_info": {"name": "python"},
-    })
+    nb.metadata.update(
+        {
+            "kernelspec": {
+                "display_name": "Python 3",
+                "language": "python",
+                "name": "python3",
+            },
+            "language_info": {"name": "python"},
+        }
+    )
     if colab:
         # What makes Colab pick a GPU runtime by itself. Without it the user silently
         # lands on CPU, where Boltz-2 is effectively infinite.
         nb.metadata["accelerator"] = "GPU"
-        nb.metadata["colab"] = {"gpuType": "T4", "provenance": [],
-                                "include_colab_link": True}
+        nb.metadata["colab"] = {
+            "gpuType": "T4",
+            "provenance": [],
+            "include_colab_link": True,
+        }
     else:
         nb.metadata["colab"] = {"provenance": []}
     return nb

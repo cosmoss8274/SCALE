@@ -1,17 +1,9 @@
-"""RFdiffusion + ProteinMPNN as a generator.
+"""RFdiffusion + ProteinMPNN as a generator."""
 
-A thin adapter over :mod:`binderopt.seeding`, which already drives both programs. It is
-here so that this pipeline is selected the same way as any other design source rather
-than being the one the loop knows about by name.
-
-Needs both programs installed and their environments configured -- see
-``binderopt/external.py`` for the variables. Importing this module never requires them;
-only constructing the generator does.
-"""
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from ..seeding import SeedDataGenerator, SeedingConfig
 from .base import Generator
@@ -19,13 +11,7 @@ from .registry import register_generator
 
 
 class RFdiffusionMPNNGenerator(Generator):
-    """Backbones from RFdiffusion, sequences from ProteinMPNN.
-
-    Args:
-        config: a :class:`~binderopt.seeding.SeedingConfig` naming the target PDB,
-            the contig and the hotspot residues.
-        work_dir: where backbones and sequence files are written.
-    """
+    """Backbones from RFdiffusion, sequences from ProteinMPNN."""
 
     name = "rfdiffusion_mpnn"
 
@@ -41,6 +27,10 @@ class RFdiffusionMPNNGenerator(Generator):
         ``n_sequences_per_backbone``; ``n`` only truncates the result, so set those to
         control the GPU cost rather than relying on ``n``.
         """
+        if n < 0:
+            raise ValueError("Requested candidate count must be nonnegative")
+        if n == 0:
+            return []
         rows = self._generator.run()
         seen, out = set(), []
         for row in rows:

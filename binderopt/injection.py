@@ -1,25 +1,5 @@
-"""Unified external sequence injection module.
+"""Unified external sequence injection module."""
 
-Merges two earlier injector modules into one. Supports three source types, each backed by a concrete
-`CandidateSource` subclass (see that class's docstring for the adapter
-contract other tools should implement to plug in a new source type):
-
-- "proteinmpnn_batch" (`ProteinMPNNBatchSource`): recursively reads
-  design_*.json files from a ProteinMPNN batch_output directory tree
-  (residue_design dict -> sequence).
-- "benchmark_batch" (`BenchmarkBatchSource`): reads a benchmark-format CSV
-  (same schema as `initial_csv`, i.e. columns sequence/nll/...) and extracts
-  sequences. This generalizes the old (effectively unused) "benchmark_batch"
-  source type, which pointed at a directory of *reference* structures rather
-  than a real sequence source -- here it is given a concrete, working
-  implementation: point `path` at any benchmark-format CSV.
-- "csv" (`CSVSource`): a plain CSV with a configurable sequence column.
-
-Each loaded sequence also carries an `nll` value when the source provides
-one (ProteinMPNN design JSON `nll` field, or a CSV `nll` column), else NaN.
-This lets the optimizer's `nll` surrogate head learn from real
-ProteinMPNN/RFdiffusion-sourced sequences as they get injected.
-"""
 from __future__ import annotations
 
 import csv
@@ -34,10 +14,26 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 _AA_3TO1 = {
-    "ALA": "A", "CYS": "C", "ASP": "D", "GLU": "E", "PHE": "F", "GLY": "G",
-    "HIS": "H", "ILE": "I", "LYS": "K", "LEU": "L", "MET": "M", "ASN": "N",
-    "PRO": "P", "GLN": "Q", "ARG": "R", "SER": "S", "THR": "T", "VAL": "V",
-    "TRP": "W", "TYR": "Y",
+    "ALA": "A",
+    "CYS": "C",
+    "ASP": "D",
+    "GLU": "E",
+    "PHE": "F",
+    "GLY": "G",
+    "HIS": "H",
+    "ILE": "I",
+    "LYS": "K",
+    "LEU": "L",
+    "MET": "M",
+    "ASN": "N",
+    "PRO": "P",
+    "GLN": "Q",
+    "ARG": "R",
+    "SER": "S",
+    "THR": "T",
+    "VAL": "V",
+    "TRP": "W",
+    "TYR": "Y",
 }
 
 
@@ -48,18 +44,7 @@ def _sequence_from_residue_design(residue_design: Dict[str, str]) -> str:
 
 
 class CandidateSource(ABC):
-    """Abstract adapter for upstream tools that produce candidate sequences.
-
-    This is the extension point for plugging in candidate-sequence
-    generators (ProteinMPNN, RFdiffusion, BoltzGen, a plain CSV of designs,
-    etc). To add a new source type, subclass `CandidateSource`, implement
-    `load()` to parse that tool's output format into a list of dicts (each
-    must include a `sequence` key; an `nll` key and other metadata such as
-    `cif_file` are optional), and reference your source's name via the
-    `type` field in a target yaml's `injection.sources.<name>` block (wiring
-    a new `type` string to your subclass is currently done in
-    `SequenceInjector._SOURCE_CLASSES` below).
-    """
+    """Abstract adapter for upstream tools that produce candidate sequences."""
 
     def __init__(self, source_cfg: Dict):
         self.source_cfg = source_cfg
@@ -104,14 +89,7 @@ class ProteinMPNNBatchSource(CandidateSource):
 
 
 class BenchmarkBatchSource(CandidateSource):
-    """Loads sequences (+ nll) from a benchmark-format CSV (same schema as initial_csv).
-
-    This is also how RFdiffusion-origin candidates are consumed in this
-    codebase: an RFdiffusion run's raw summary CSV gets converted to this
-    benchmark schema (see `binderopt.targets.ensure_benchmark_csv`), and a
-    `benchmark_batch` source then points at that converted CSV (see
-    `configs/targets/bhrf1.yaml`).
-    """
+    """Loads sequences (+ nll) from a benchmark-format CSV (same schema as initial_csv)."""
 
     def load(self) -> List[Dict]:
         csv_path = self.source_cfg.get("path") or self.source_cfg.get("csv_path")
@@ -182,17 +160,27 @@ class SequenceInjector:
             source_cls = self._SOURCE_CLASSES.get(source_type)
 
             if source_cls is None:
-                logger.warning("Unknown injection source type '%s' for '%s'", source_type, source_name)
+                logger.warning(
+                    "Unknown injection source type '%s' for '%s'",
+                    source_type,
+                    source_name,
+                )
                 records = []
             else:
                 records = source_cls(source_cfg).load()
 
             seqs = [(r["sequence"], r.get("nll", np.nan)) for r in records]
-            logger.info("Source '%s' (%s): %d sequences", source_name, source_type, len(seqs))
+            logger.info(
+                "Source '%s' (%s): %d sequences", source_name, source_type, len(seqs)
+            )
             all_candidates.extend(seqs)
 
-        self._all_available = [(s, nll) for s, nll in all_candidates if s not in already_evaluated]
-        logger.info("Total available for injection: %d sequences", len(self._all_available))
+        self._all_available = [
+            (s, nll) for s, nll in all_candidates if s not in already_evaluated
+        ]
+        logger.info(
+            "Total available for injection: %d sequences", len(self._all_available)
+        )
 
     def get_sequences_to_inject(
         self, iteration: int, n_seqs: int, already_evaluated: Set[str]
@@ -201,7 +189,8 @@ class SequenceInjector:
         self._initialize_available_sequences(already_evaluated)
 
         candidates = [
-            (s, nll) for s, nll in self._all_available
+            (s, nll)
+            for s, nll in self._all_available
             if s not in self.injected_sequences and s not in already_evaluated
         ]
         if not candidates:
@@ -210,6 +199,10 @@ class SequenceInjector:
 
         selected = candidates[:n_seqs]
         self.injected_sequences.update(s for s, _ in selected)
-        logger.info("Injecting %d sequences at iteration %d (%d remaining)",
-                    len(selected), iteration, len(candidates) - len(selected))
+        logger.info(
+            "Injecting %d sequences at iteration %d (%d remaining)",
+            len(selected),
+            iteration,
+            len(candidates) - len(selected),
+        )
         return selected

@@ -3,6 +3,7 @@
 Distances are mismatches divided by length. Unequal lengths are rejected rather
 than compared with a silently truncated zip. Constraints never relax to fill a batch.
 """
+
 from __future__ import annotations
 
 from collections import Counter
@@ -13,7 +14,9 @@ import random
 
 def mismatches(a: str, b: str) -> int:
     if not a or len(a) != len(b):
-        raise ValueError("Substitution search requires nonempty, equal-length sequences")
+        raise ValueError(
+            "Substitution search requires nonempty, equal-length sequences"
+        )
     return sum(x != y for x, y in zip(a, b))
 
 
@@ -33,15 +36,27 @@ class DiversityPolicy:
     adaptive_parent_steps: bool = True
 
     def __post_init__(self):
-        if any(not 0 <= v <= 1 for v in (
-                self.min_pool_fraction, self.min_batch_fraction, self.min_history_fraction)):
+        if any(
+            not 0 <= v <= 1
+            for v in (
+                self.min_pool_fraction,
+                self.min_batch_fraction,
+                self.min_history_fraction,
+            )
+        ):
             raise ValueError("Distance fractions must lie in [0, 1]")
         if self.max_per_founder < 1 or self.min_founders < 1:
             raise ValueError("Founder limits must be positive integers")
 
     def counts(self, length):
-        return tuple(math.ceil(length * f - 1e-12) for f in (
-            self.min_pool_fraction, self.min_batch_fraction, self.min_history_fraction))
+        return tuple(
+            math.ceil(length * f - 1e-12)
+            for f in (
+                self.min_pool_fraction,
+                self.min_batch_fraction,
+                self.min_history_fraction,
+            )
+        )
 
     def to_dict(self):
         return asdict(self)
@@ -54,7 +69,11 @@ def choose_parents(history, objective, n=5, reference_pool=None, policy=None):
     parent merely by having a higher unconstrained score. Initial seeds remain
     fallbacks for founders without a measured novel descendant.
     """
-    if reference_pool is not None and policy is not None and policy.adaptive_parent_steps:
+    if (
+        reference_pool is not None
+        and policy is not None
+        and policy.adaptive_parent_steps
+    ):
         eligible, fallback = {}, {}
         for h in sorted(history, key=lambda h: (-objective(h), h["sequence_id"])):
             founder = h.get("founder_id", h["sequence_id"])
@@ -72,8 +91,16 @@ def choose_parents(history, objective, n=5, reference_pool=None, policy=None):
     return list(best.values())[:n]
 
 
-def propose_diverse(sampler, parents, reference_pool, history, policy,
-                    current_round, n_rounds, limit=600):
+def propose_diverse(
+    sampler,
+    parents,
+    reference_pool,
+    history,
+    policy,
+    current_round,
+    n_rounds,
+    limit=600,
+):
     """Generate balanced proposals, preserving the actual generating parent.
 
     Each parent gets the same proposal allowance. Invalid/previously measured
@@ -95,14 +122,23 @@ def propose_diverse(sampler, parents, reference_pool, history, policy,
             lower = max(1, prior_minimum if parent_is_novel else minimum)
             parent_sampler = type(sampler)(
                 amino_acids="".join(sampler.amino_acids),
-                residue_sampling={**sampler.residue_sampling,
-                                  "min_mutations": lower, "max_mutations": lower + 4},
-                top_n_for_sampling=sampler.top_n_for_sampling)
+                residue_sampling={
+                    **sampler.residue_sampling,
+                    "min_mutations": lower,
+                    "max_mutations": lower + 4,
+                },
+                top_n_for_sampling=sampler.top_n_for_sampling,
+            )
         accepted = []
         for _ in range(12):
-            generated = sorted(parent_sampler.generate_candidates(
-                [parent["sequence"]], [parent.get("residue_metrics") or None],
-                current_iteration=current_round, max_iterations=n_rounds))
+            generated = sorted(
+                parent_sampler.generate_candidates(
+                    [parent["sequence"]],
+                    [parent.get("residue_metrics") or None],
+                    current_iteration=current_round,
+                    max_iterations=n_rounds,
+                )
+            )
             random.shuffle(generated)
             for seq in generated:
                 if seq in known or seq in seen:
@@ -112,13 +148,16 @@ def propose_diverse(sampler, parents, reference_pool, history, policy,
                     continue
                 if prior_new and nearest(seq, prior_new) < prior_minimum:
                     continue
-                accepted.append({
-                    "sequence": seq, "parent_id": parent["sequence_id"],
-                    "founder_id": parent.get("founder_id", parent["sequence_id"]),
-                    "mutations_from_parent": mismatches(seq, parent["sequence"]),
-                    "mutations_from_pool": distance,
-                    "identity_to_pool": 1 - distance / len(seq),
-                })
+                accepted.append(
+                    {
+                        "sequence": seq,
+                        "parent_id": parent["sequence_id"],
+                        "founder_id": parent.get("founder_id", parent["sequence_id"]),
+                        "mutations_from_parent": mismatches(seq, parent["sequence"]),
+                        "mutations_from_pool": distance,
+                        "identity_to_pool": 1 - distance / len(seq),
+                    }
+                )
                 seen.add(seq)
                 if len(accepted) == per_parent:
                     break
@@ -137,20 +176,28 @@ def select_diverse(proposals, scores, n, policy):
     This enforces multiple starting sequences even when every top score descends
     from one seed. No oracle information from the proposed batch is used.
     """
-    if len(scores) != len(proposals) or any(not math.isfinite(float(s)) for s in scores):
+    if len(scores) != len(proposals) or any(
+        not math.isfinite(float(s)) for s in scores
+    ):
         raise ValueError("One finite surrogate score is required per proposal")
     required = min(policy.min_founders, n)
-    if math.ceil(n / policy.max_per_founder) > len({p["founder_id"] for p in proposals}):
+    if math.ceil(n / policy.max_per_founder) > len(
+        {p["founder_id"] for p in proposals}
+    ):
         raise RuntimeError("Too few founders for the requested batch cap")
-    order = sorted(range(len(proposals)), key=lambda i: (-float(scores[i]), proposals[i]["sequence"]))
+    order = sorted(
+        range(len(proposals)),
+        key=lambda i: (-float(scores[i]), proposals[i]["sequence"]),
+    )
     selected, counts = [], Counter()
     batch_distance = policy.counts(len(proposals[0]["sequence"]))[1]
 
     def fits(i):
         p = proposals[i]
-        return (counts[p["founder_id"]] < policy.max_per_founder and
-                all(mismatches(p["sequence"], proposals[j]["sequence"]) >= batch_distance
-                    for j in selected))
+        return counts[p["founder_id"]] < policy.max_per_founder and all(
+            mismatches(p["sequence"], proposals[j]["sequence"]) >= batch_distance
+            for j in selected
+        )
 
     for i in order:
         if not counts[proposals[i]["founder_id"]] and fits(i):
@@ -159,7 +206,9 @@ def select_diverse(proposals, scores, n, policy):
             if len(counts) >= required:
                 break
     if len(counts) < required:
-        raise RuntimeError("Not enough distance-separated founders; constraints were not relaxed")
+        raise RuntimeError(
+            "Not enough distance-separated founders; constraints were not relaxed"
+        )
     for i in order:
         if len(selected) == n:
             break
@@ -167,5 +216,7 @@ def select_diverse(proposals, scores, n, policy):
             selected.append(i)
             counts[proposals[i]["founder_id"]] += 1
     if len(selected) != n:
-        raise RuntimeError("Cannot fill the batch under the distance constraints; no predictions spent")
+        raise RuntimeError(
+            "Cannot fill the batch under the distance constraints; no predictions spent"
+        )
     return [{**proposals[i], "surrogate_score": float(scores[i])} for i in selected]

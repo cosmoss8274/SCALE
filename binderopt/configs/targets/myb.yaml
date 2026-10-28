@@ -1,0 +1,17 @@
+target_name: myb
+target_sequence: RDDIDMLKELGSLTTANLMEKVRGLQNLAYQLGLDESREMTRGKFLNILEKPKK
+reference_structures_dir: ${SCALE_ASSETS}/my_design/myb/mbd_redesign_106
+af3_structure_dir: ${SCALE_ASSETS}/my_design/myb/af3_pred_106
+af3_target_msa_dir: ${SCALE_ASSETS}/my_design/myb/mbd_redesign_106/af3_target_msa
+initial_csv: ${SCALE_ASSETS}/my_design/myb/mbd_redesign_106/designed_binders_af3_n1c5_random1000.csv
+n_iterations: 10
+mutants_per_round: 30
+top_n_for_sampling: 30
+calculate_rmsd: true
+injection_enabled: false
+injection_interval: 3
+n_seqs_to_inject: 50
+injection_sources:
+  proteinmpnn_batch:
+    type: proteinmpnn_batch
+    path: ${SCALE_ASSETS}/my_design/myb/batch_outputs

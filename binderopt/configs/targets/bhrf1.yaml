@@ -1,0 +1,17 @@
+target_name: bhrf1
+target_sequence: GSHHHHHHSQDPMAYSTREILLALCIRDSRVHGNGTLHPVLELAARETPLRLSPEDTVVLRYHVLLEEIIERNSETFTETWNRFITHTEHVDLDFNSVFLEIFHRGDPSLGRALAWMAWCMHACRTLCCNQSTPYYVVDLSVRGMLEASEGLDGWIH
+af3_structure_dir: ${SCALE_ASSETS}/af3_rfdiffusion_bhrf1_final
+af3_target_msa_dir: ${SCALE_ASSETS}/target_msa_cache
+reference_structures_dir: ${SCALE_ASSETS}/targets/designbb
+calculate_rmsd: false
+rfdiffusion_csv_path: ${SCALE_ASSETS}/af3_rfdiffusion_bhrf1_final/af3_predictions_summary.csv
+initial_csv: ${SCALE_ASSETS}/af3_rfdiffusion_bhrf1_final/benchmark_bhrf1_rfdiffusion.csv
+n_iterations: 30
+mutants_per_round: 30
+top_n_for_sampling: 30
+af3_thresholds:
+  min_pae_interaction: 1.5
+  ptm_binder: 0.7
+  l_rmsd: 2.5
+metric_weights:
+  nll: -25.0

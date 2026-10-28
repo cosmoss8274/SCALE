@@ -1,0 +1,40 @@
+target_name: her2
+target_sequence: NTDTFESMPNPEGRYTFGASCVTACPYNYLSTDVGSCTLVCPLHNQEVTAEDGTQRCEKCSKPCARVCYGLGMEHLREVRAVTSANIQEFAGCKKIFGSLAFLPESFDGDPASNTAPLQPEQLQVFETLEEITGYLYISAWPDSLPDLSVFQNLQVIRGRILHNGAYSLTLQGLGISWLGLRSLRELGSGLALIHHNTHLCFVHTVPWDQLFRNPHQALLHTANRPEDECVGEGLACHQLCARGHCWGPGPTQCVNCSQFLRGQECVEECRVLQGLPREYVNARHCLPCHPECQPQNGSVTCFGPEADQCVACAHYKDPPFCVARCPSGVKPDLSYMPIWKFPDEEGACQPCPINCTHSCVDLDDKGC
+initial_csv: ${SCALE_RESULTS}/her2_seed_data/benchmark_her2.csv
+seeding:
+  target_pdb: ${SCALE_ASSETS}/pos_neg/3N85.pdb
+  contig: 100-100/0 A253-620
+  hotspot_residues:
+  - A557
+  - A558
+  - A560
+  - A561
+  - A569
+  - A570
+  - A571
+  - A572
+  - A573
+  - A579
+  - A591
+  - A593
+  - A596
+  - A598
+  - A600
+  - A602
+  - A603
+  - A604
+  - A605
+  binder_length: 100
+  n_backbones: 15
+  n_sequences_per_backbone: 50
+af3_structure_dir: ${SCALE_RESULTS}/her2_seed_data/af3_structures
+af3_target_msa_dir: ${SCALE_ASSETS}/target_msa_cache
+calculate_rmsd: false
+metric_weights:
+  l_rmsd: 0.0
+  nll: -15.0
+af3_thresholds:
+  l_rmsd: null
+n_iterations: 30
+mutants_per_round: 30
+top_n_for_sampling: 30

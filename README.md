@@ -2,9 +2,7 @@
 <p align="center">Structure-conditioned active learning for protein binder design</p>
 <p align="center"><a href="https://colab.research.google.com/github/cosmoss8274/SCALE/blob/main/notebooks/SCALE_demo_colab.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab" /></a></p>
 
-SCALE optimises a candidate binder pool through structure prediction, ESM-2 embeddings,
-a random-forest surrogate and structure-guided sequence mutation. Structure predictors,
-candidate generators and optimisation objectives have separate interfaces.
+SCALE refines de novo binder designs by reusing the structural feedback that generate-and-filter pipelines discard. Across five targets, computational hit rates rose from under 11% to 60–100%. No model fine-tuning, no gradients through the structure predictor, and any generator or objective can be plugged in.
 
 ## Quick start
 
